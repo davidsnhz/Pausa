@@ -1,0 +1,29 @@
+# Dependencias
+node_modules
+.pnp
+.pnp.js
+
+# Build
+dist
+dist-ssr
+
+# Entorno (¡nunca subir credenciales!)
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Editor / SO
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Capacitor / iOS (se generan con `npx cap add ios`)
+ios/App/Pods
+ios/App/App/public

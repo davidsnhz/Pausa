@@ -1,0 +1,26 @@
+rules_version = '2';
+
+// ----------------------------------------------------------------------------
+// Reglas de seguridad de Firestore para Pausa.
+// Principio: cada usuario autenticado SOLO puede leer/escribir su propio árbol
+// users/{uid}/... — nunca el de otra persona. Todo lo demás queda denegado.
+//
+// Cómo aplicarlas:
+//   Opción rápida (consola): Firebase → Firestore Database → pestaña "Reglas",
+//   pega este contenido y pulsa "Publicar".
+//   Opción CLI: `firebase deploy --only firestore:rules`
+// ----------------------------------------------------------------------------
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Documento del usuario (streak) y TODAS sus subcolecciones
+    // (chats, chats/*/messages, moods).
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+      match /{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+  }
+}

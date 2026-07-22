@@ -1,0 +1,208 @@
+// pages/Chat.jsx
+// ----------------------------------------------------------------------------
+// 4. Chat "Tu espacio seguro": pantalla completa SIN navbar. Burbujas de
+// usuario oscuras a la derecha, IA claras a la izquierda con mini-mascota
+// "listening". Indicador de escribiendo. Mensajes persistidos en Firestore en
+// tiempo real (onSnapshot). Al salir, se genera y guarda el resumen del día.
+// ----------------------------------------------------------------------------
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  collection,
+  addDoc,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
+import { ArrowLeft, Send } from "lucide-react";
+
+import { useAuth, displayNameOf } from "../context/AuthContext";
+import { db } from "../services/firebase";
+import { getAIReply, getChatSummary } from "../services/ai";
+import { touchStreak } from "../services/streak";
+import { dateKey } from "../utils/date";
+import { hideKeyboard } from "../services/native";
+
+import Mascot from "../components/Mascot";
+import Page from "../components/Page";
+
+export default function Chat() {
+  const { user, profile } = useAuth();
+  const navigate = useNavigate();
+  const today = dateKey();
+
+  // Mensaje de bienvenida de la IA, personalizado con el nombre.
+  const nombre = displayNameOf(user, profile);
+  const WELCOME = `Hola${nombre ? ", " + nombre : ""}. Este es tu espacio, sin juicios. ¿Qué tienes en mente hoy?`;
+
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState("");
+  const [typing, setTyping] = useState(false);
+
+  const scrollRef = useRef(null);
+  const messagesRef = useRef([]); // copia viva para el resumen al desmontar.
+  messagesRef.current = messages;
+
+  const chatDoc = user ? doc(db, "users", user.uid, "chats", today) : null;
+  const messagesCol = user
+    ? collection(db, "users", user.uid, "chats", today, "messages")
+    : null;
+
+  // Suscripción en tiempo real a los mensajes del día.
+  useEffect(() => {
+    if (!messagesCol) return;
+    const q = query(messagesCol, orderBy("createdAt", "asc"));
+    const unsub = onSnapshot(
+      q,
+      (snap) => setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      () => setMessages([])
+    );
+    return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  // Autoscroll al final cuando llegan mensajes o aparece el indicador.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, typing]);
+
+  // Al salir del chat: generar resumen del día y guardarlo (alimenta el Dashboard).
+  useEffect(() => {
+    return () => {
+      const history = messagesRef.current.map((m) => ({ role: m.role, text: m.text }));
+      if (!chatDoc || history.length === 0) return;
+      getChatSummary(history).then((summary) => {
+        setDoc(chatDoc, { summary, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  async function send() {
+    const value = text.trim();
+    if (!value || typing) return;
+    setText("");
+    hideKeyboard();
+
+    if (!messagesCol) return;
+    try {
+      // 1) Persistir el mensaje del usuario + contar el check-in del día (racha).
+      await addDoc(messagesCol, { role: "user", text: value, createdAt: serverTimestamp() });
+      await setDoc(chatDoc, { lastMessage: value, updatedAt: serverTimestamp() }, { merge: true });
+      touchStreak(user.uid);
+
+      // 2) Pedir respuesta a la IA (incluye la bienvenida como contexto).
+      setTyping(true);
+      const history = [
+        { role: "ai", text: WELCOME },
+        ...messagesRef.current.map((m) => ({ role: m.role, text: m.text })),
+        { role: "user", text: value },
+      ];
+      const reply = await getAIReply(history);
+      await addDoc(messagesCol, { role: "ai", text: reply, createdAt: serverTimestamp() });
+      await setDoc(chatDoc, { lastMessage: reply, updatedAt: serverTimestamp() }, { merge: true });
+    } catch {
+      /* si falla la persistencia (Firebase sin configurar), no rompemos la UI */
+    } finally {
+      setTyping(false);
+    }
+  }
+
+  function onKeyDown(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  }
+
+  return (
+    <Page>
+      <div className="pt-safe-14 pb-safe-6 flex flex-1 flex-col px-5">
+        <header className="mb-5 flex items-center">
+          <button onClick={() => navigate(-1)} aria-label="Volver">
+            <ArrowLeft size={24} />
+          </button>
+          <h2 className="flex-1 pr-6 text-center text-base font-bold tracking-[-0.5px]">
+            Tu espacio seguro
+          </h2>
+        </header>
+
+        {/* Lista de mensajes */}
+        <div ref={scrollRef} className="no-scrollbar flex flex-1 flex-col gap-4 overflow-y-auto pb-2">
+          {/* Bienvenida de la IA */}
+          <AiBubble text={WELCOME} />
+
+          {messages.map((m) =>
+            m.role === "user" ? (
+              <div
+                key={m.id}
+                className="ml-auto max-w-[85%] rounded-[20px] rounded-br-[4px] bg-black p-4 text-sm leading-relaxed text-white dark:bg-white dark:text-black"
+              >
+                {m.text}
+              </div>
+            ) : (
+              <AiBubble key={m.id} text={m.text} />
+            )
+          )}
+
+          {typing && <TypingIndicator />}
+        </div>
+
+        {/* Barra de entrada */}
+        <div className="flex items-center gap-2.5 pt-2">
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder="Escribe lo que sientes..."
+            className="flex-1 rounded-full bg-neutral-100 px-5 py-3.5 text-sm outline-none placeholder:text-neutral-400 dark:bg-neutral-900"
+          />
+          <button
+            onClick={send}
+            aria-label="Enviar"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-black text-white transition-transform active:scale-90 dark:bg-white dark:text-black"
+          >
+            <Send size={18} />
+          </button>
+        </div>
+      </div>
+    </Page>
+  );
+}
+
+// Burbuja de IA con mini-mascota "listening".
+function AiBubble({ text }) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <div className="mt-1 shrink-0">
+        <Mascot state="listening" size={28} />
+      </div>
+      <div className="max-w-[85%] rounded-[20px] rounded-bl-[4px] bg-neutral-100 p-4 text-sm leading-relaxed dark:bg-neutral-900">
+        {text}
+      </div>
+    </div>
+  );
+}
+
+// Indicador de "escribiendo" (3 puntos animados).
+function TypingIndicator() {
+  return (
+    <div className="flex items-start gap-2.5">
+      <div className="mt-1 shrink-0">
+        <Mascot state="listening" size={28} />
+      </div>
+      <div className="flex gap-1 rounded-[20px] rounded-bl-[4px] bg-neutral-100 px-4 py-4 dark:bg-neutral-900">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className="h-2 w-2 animate-bounce rounded-full bg-neutral-400"
+            style={{ animationDelay: `${i * 0.15}s` }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
