@@ -8,9 +8,10 @@
 // o directamente en el objeto de abajo.
 // ----------------------------------------------------------------------------
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, connectAuthEmulator } from "firebase/auth";
 import {
   initializeFirestore,
+  connectFirestoreEmulator,
   persistentLocalCache,
   persistentSingleTabManager,
 } from "firebase/firestore";
@@ -51,5 +52,12 @@ export const auth = getAuth(app);
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentSingleTabManager(undefined) }),
 });
+
+// Modo emuladores (`npm run dev:emu`, ver .env.emulators): Auth y Firestore en
+// local, para probar sin tocar los datos reales.
+if (import.meta.env.VITE_USE_EMULATORS === "true") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
 
 export default app;

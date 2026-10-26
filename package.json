@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:emu": "vite --mode emulators",
+    "emulators": "npx -y firebase-tools@15 emulators:start --project demo-pausa",
     "build": "vite build",
     "preview": "vite preview",
     "ios": "npm run build && cap sync && cap open ios"
