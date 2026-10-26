@@ -114,8 +114,9 @@ Se hará en una fase posterior sobre un Mac.
 src/
 ├── components/  Mascot, BottomNav, Modal, BottomSheet, Page, ErrorBoundary
 ├── pages/       Splash, Login, Dashboard, Chat, Relax, Stats, Profile, Legal
-├── context/     AuthContext (sesión Firebase)
-├── hooks/       useNow (fecha al volver a la app), useGoBack (volver seguro)
+├── context/     AuthContext (sesión + perfil), DataContext (ánimos y resúmenes precargados)
+├── hooks/       useNow (fecha al volver a la app), useGoBack (volver seguro),
+│                useEnterOnce (animaciones de entrada solo la primera vez)
 ├── services/    firebase, ai, native, streak, account, theme
 └── utils/       date (dateKey, greeting, currentWeek)
 ```

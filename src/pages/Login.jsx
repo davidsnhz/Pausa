@@ -55,10 +55,10 @@ export default function Login() {
           { merge: true }
         );
       }
-      // El redirect lo hace AuthContext + App al detectar la sesión.
+      // El redirect lo hace AuthContext + App al detectar la sesión; hasta
+      // entonces el botón sigue en "Un momento…".
     } catch (err) {
       setError(traducirError(err.code));
-    } finally {
       setBusy(false);
     }
   }
@@ -129,7 +129,8 @@ export default function Login() {
             className="w-full rounded-2xl border border-neutral-200 bg-neutral-100 px-5 py-4 text-sm outline-none placeholder:text-neutral-400 focus:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-900 dark:focus:border-neutral-600"
           />
 
-          {error && <p className="mt-3 text-center text-sm text-red-500">{error}</p>}
+          {/* Hueco reservado: el formulario no salta al aparecer un error. */}
+          <p className="mt-3 min-h-5 text-center text-sm text-red-500">{error}</p>
 
           <button
             type="submit"

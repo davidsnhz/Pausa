@@ -12,20 +12,24 @@
     <meta name="apple-mobile-web-app-title" content="Pausa" />
     <!-- Lo ajusta services/theme.js según el tema de la app (no el del sistema) -->
     <meta name="theme-color" content="#ffffff" />
+    <!-- Tema ANTES del primer pintado (sin fogonazo blanco en modo oscuro).
+         Misma regla que services/theme.js: elección guardada o la del sistema. -->
+    <script>
+      try {
+        var t = localStorage.getItem("theme");
+        if (t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches) {
+          document.documentElement.classList.add("dark");
+          document.querySelector('meta[name="theme-color"]').content = "#000000";
+        }
+      } catch (e) {}
+    </script>
     <title>Pausa</title>
 
     <!-- PWA: instalable y con icono propio (Añadir a pantalla de inicio en iOS) -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/png" href="/favicon.png" />
-
-    <!-- Tipografías: Inter (cuerpo) + Space Grotesk (títulos) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Tipografías (Inter + Space Grotesk): se sirven desde la app, ver main.jsx -->
   </head>
   <body>
     <div id="root"></div>

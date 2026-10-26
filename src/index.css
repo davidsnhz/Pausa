@@ -12,6 +12,9 @@
 :root.dark {
   color-scheme: dark;
 }
+:root.dark body {
+  background: #000000;
+}
 
 html,
 body,
@@ -21,6 +24,9 @@ body,
 
 body {
   margin: 0;
+  /* Fondo ya en el body (no solo en React): el primer pintado sale del color
+     correcto, también en modo oscuro. */
+  background: #ffffff;
   font-family: "Inter", system-ui, sans-serif;
   /* Sin scroll de rebote/goma en el documento (se ve raro empaquetado). */
   overscroll-behavior: none;

@@ -44,9 +44,10 @@ function Row({ Icon, label, value, danger, chevron, toggle, checked, onToggle, o
             checked ? "bg-green-500" : "bg-neutral-300 dark:bg-neutral-700"
           }`}
         >
+          {/* translate (no left/right) para que la bolita se deslice, no salte */}
           <span
-            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
-              checked ? "right-0.5" : "left-0.5"
+            className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
+              checked ? "translate-x-5" : ""
             }`}
           />
         </span>

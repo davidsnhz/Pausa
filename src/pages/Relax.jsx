@@ -15,6 +15,7 @@ import {
 
 import Mascot from "../components/Mascot";
 import Page from "../components/Page";
+import { useEnterOnce } from "../hooks/useEnterOnce";
 
 // Los 8 sonidos EXACTOS. id = nombre del archivo en /public/sounds/{id}.mp3
 const SOUNDS = [
@@ -35,7 +36,9 @@ export default function Relax() {
 
   return (
     <Page>
-      <div className="pt-safe-14 flex flex-1 flex-col px-5">
+      {/* min-h-0: deja que la lista haga scroll en pantallas pequeñas en vez
+          de crecer y quedar cortada. */}
+      <div className="pt-safe-14 flex min-h-0 flex-1 flex-col px-5">
         <h1 className="mb-5 text-[28px] font-bold tracking-[-0.5px]">Relax</h1>
 
         {/* Tabs superiores */}
@@ -68,6 +71,7 @@ function SoundsTab() {
   const [loadingId, setLoadingId] = useState(null);
   const [unavailable, setUnavailable] = useState([]); // ids cuyo mp3 no carga
   const audioRef = useRef(null);
+  const animateIn = useEnterOnce("relax-sounds");
 
   // Al desmontar, parar cualquier audio.
   useEffect(() => {
@@ -122,7 +126,7 @@ function SoundsTab() {
           <motion.button
             key={sound.id}
             onClick={() => toggle(sound)}
-            initial={{ opacity: 0, y: 8 }}
+            initial={animateIn ? { opacity: 0, y: 8 } : false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.28, delay: i * 0.04, ease: "easeOut" }}
             className={`flex w-full items-center gap-4 rounded-[20px] p-3.5 transition-[transform,background,border] active:scale-[0.98] ${
@@ -240,12 +244,13 @@ const EXERCISES = [
 ];
 
 function ExercisesTab() {
+  const animateIn = useEnterOnce("relax-exercises");
   return (
     <div className="no-scrollbar flex-1 space-y-3 overflow-y-auto pb-24">
       {EXERCISES.map((ex, i) => (
         <motion.div
           key={ex.title}
-          initial={{ opacity: 0, y: 8 }}
+          initial={animateIn ? { opacity: 0, y: 8 } : false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.28, delay: i * 0.05, ease: "easeOut" }}
           className="rounded-3xl bg-neutral-100 p-5 dark:bg-neutral-900/60"

@@ -5,7 +5,7 @@
 // "listening". Indicador de escribiendo. Mensajes persistidos en Firestore en
 // tiempo real (onSnapshot). Al salir, se genera y guarda el resumen del día.
 // ----------------------------------------------------------------------------
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   collection,
   addDoc,
@@ -38,13 +38,14 @@ export default function Chat() {
   const nombre = displayNameOf(user, profile);
   const WELCOME = `Hola${nombre ? ", " + nombre : ""}. Este es tu espacio, sin juicios. ¿Qué tienes en mente hoy?`;
 
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(null); // null hasta la primera lectura
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(false);
 
   const scrollRef = useRef(null);
+  const scrolledOnce = useRef(false);
   const messagesRef = useRef([]); // copia viva para el resumen al desmontar.
-  messagesRef.current = messages;
+  messagesRef.current = messages || [];
 
   const chatDoc = user ? doc(db, "users", user.uid, "chats", today) : null;
   const messagesCol = user
@@ -64,9 +65,13 @@ export default function Chat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // Autoscroll al final cuando llegan mensajes o aparece el indicador.
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  // Autoscroll al final cuando llegan mensajes o aparece el indicador. La
+  // primera vez, directo y antes de pintar (sin verse el desplazamiento); luego, suave.
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el || messages === null) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: scrolledOnce.current ? "smooth" : "auto" });
+    scrolledOnce.current = true;
   }, [messages, typing]);
 
   // Al salir del chat: generar resumen del día y guardarlo (alimenta el Dashboard).
@@ -121,7 +126,9 @@ export default function Chat() {
 
   return (
     <Page>
-      <div className="pt-safe-14 pb-safe-6 flex flex-1 flex-col px-5">
+      {/* min-h-0: sin él, con muchos mensajes este bloque crece más que la
+          pantalla y la barra de escribir queda fuera de la vista. */}
+      <div className="pt-safe-14 pb-safe-6 flex min-h-0 flex-1 flex-col px-5">
         <header className="mb-5 flex items-center">
           <button onClick={goBack} aria-label="Volver">
             <ArrowLeft size={24} />
@@ -133,10 +140,11 @@ export default function Chat() {
 
         {/* Lista de mensajes */}
         <div ref={scrollRef} className="no-scrollbar flex flex-1 flex-col gap-4 overflow-y-auto pb-2">
-          {/* Bienvenida de la IA */}
-          <AiBubble text={WELCOME} />
+          {/* La conversación aparece entera de una vez, no la bienvenida
+              primero y los mensajes del día un instante después. */}
+          {messages !== null && <AiBubble text={WELCOME} />}
 
-          {messages.map((m) =>
+          {messages?.map((m) =>
             m.role === "user" ? (
               <div
                 key={m.id}

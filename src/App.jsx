@@ -19,11 +19,18 @@ import Dashboard from "./pages/Dashboard";
 // El resto se cargan bajo demanda (code-splitting) para acelerar el arranque.
 // Con v7_startTransition activo, la navegación mantiene la pantalla actual
 // mientras carga el trozo, así que no hay parpadeo al cambiar de sección.
-const Chat = lazy(() => import("./pages/Chat"));
-const Relax = lazy(() => import("./pages/Relax"));
-const Stats = lazy(() => import("./pages/Stats"));
-const Profile = lazy(() => import("./pages/Profile"));
-const Legal = lazy(() => import("./pages/Legal"));
+const LAZY_PAGES = {
+  Chat: () => import("./pages/Chat"),
+  Relax: () => import("./pages/Relax"),
+  Stats: () => import("./pages/Stats"),
+  Profile: () => import("./pages/Profile"),
+  Legal: () => import("./pages/Legal"),
+};
+const Chat = lazy(LAZY_PAGES.Chat);
+const Relax = lazy(LAZY_PAGES.Relax);
+const Stats = lazy(LAZY_PAGES.Stats);
+const Profile = lazy(LAZY_PAGES.Profile);
+const Legal = lazy(LAZY_PAGES.Legal);
 
 // Rutas donde SÍ aparece el navbar inferior flotante.
 const NAV_ROUTES = ["/", "/relax", "/stats"];
@@ -46,8 +53,19 @@ export default function App() {
     hideSplash();
   }, []);
 
-  // Mientras Firebase resuelve la sesión inicial: Splash a pantalla completa.
-  if (loading) {
+  // Con sesión, precarga en segundo plano el resto de pantallas: la primera vez
+  // que se abren ya no hay espera.
+  useEffect(() => {
+    if (!user) return;
+    const t = setTimeout(() => Object.values(LAZY_PAGES).forEach((load) => load()), 1000);
+    return () => clearTimeout(t);
+  }, [user]);
+
+  // Mientras se resuelve la sesión inicial (y el perfil): Splash a pantalla
+  // completa. Justo tras iniciar sesión, en cambio, el Login sigue visible con
+  // su "Un momento…" hasta tener el perfil, sin pantallazo intermedio.
+  const loggingIn = !!user && location.pathname === "/login";
+  if (loading && !loggingIn) {
     return (
       <div className="flex h-full w-full flex-col bg-white text-black dark:bg-black dark:text-white">
         <Splash />
@@ -60,12 +78,13 @@ export default function App() {
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-white text-black dark:bg-black dark:text-white">
       <ErrorBoundary key={location.pathname}>
-        <Suspense fallback={<Splash />}>
+        {/* Fallback sin animación de entrada: continúa el Splash de arranque. */}
+        <Suspense fallback={<Splash still />}>
         <Routes location={location}>
           {/* Público */}
           <Route
             path="/login"
-            element={user ? <Navigate to="/" replace /> : <Login />}
+            element={user && !loading ? <Navigate to="/" replace /> : <Login />}
           />
           {/* Legal: accesible siempre (requisito de Apple, 5.1.1) */}
           <Route path="/privacy" element={<Legal doc="privacy" />} />
