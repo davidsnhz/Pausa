@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   AudioWaveform, Wind, Waves, Droplets, CloudRain, CloudRainWind,
-  Trees, Flame, Play,
+  Trees, Flame, Play, Loader2,
 } from "lucide-react";
 
 import Mascot from "../components/Mascot";
@@ -65,6 +65,8 @@ export default function Relax() {
 /* (a) Sonidos con reproducción real */
 function SoundsTab() {
   const [playingId, setPlayingId] = useState(null);
+  const [loadingId, setLoadingId] = useState(null);
+  const [unavailable, setUnavailable] = useState([]); // ids cuyo mp3 no carga
   const audioRef = useRef(null);
 
   // Al desmontar, parar cualquier audio.
@@ -75,22 +77,40 @@ function SoundsTab() {
     };
   }, []);
 
+  function stop() {
+    audioRef.current?.pause();
+    audioRef.current = null;
+    setPlayingId(null);
+    setLoadingId(null);
+  }
+
   function toggle(sound) {
-    // Si ya suena este, pausar.
-    if (playingId === sound.id) {
-      audioRef.current?.pause();
-      setPlayingId(null);
+    // Si ya suena (o está cargando) este, parar.
+    if (playingId === sound.id || loadingId === sound.id) {
+      stop();
       return;
     }
     // Parar el anterior y reproducir el nuevo (uno a la vez).
-    audioRef.current?.pause();
+    stop();
     const audio = new Audio(`/sounds/${sound.id}.mp3`);
     audio.loop = true;
-    audio.play().catch(() => {
-      // Si el mp3 aún no existe, no rompemos la UI (ver README para añadirlos).
-    });
     audioRef.current = audio;
-    setPlayingId(sound.id);
+    setLoadingId(sound.id);
+    // Solo se marca como "sonando" cuando de verdad empieza a sonar.
+    audio
+      .play()
+      .then(() => {
+        if (audioRef.current !== audio) return; // se pulsó otro mientras cargaba
+        setLoadingId(null);
+        setPlayingId(sound.id);
+      })
+      .catch(() => {
+        if (audioRef.current !== audio) return;
+        // El mp3 aún no existe o no se puede reproducir (ver public/sounds/README.md).
+        audioRef.current = null;
+        setLoadingId(null);
+        setUnavailable((u) => (u.includes(sound.id) ? u : [...u, sound.id]));
+      });
   }
 
   return (
@@ -121,7 +141,15 @@ function SoundsTab() {
               <Icon size={20} />
             </span>
             <span className="flex-1 text-left text-sm font-semibold">{sound.name}</span>
-            {playing ? <Equalizer /> : <Play size={18} className="text-neutral-400" />}
+            {playing ? (
+              <Equalizer />
+            ) : loadingId === sound.id ? (
+              <Loader2 size={18} className="animate-spin text-neutral-400" />
+            ) : unavailable.includes(sound.id) ? (
+              <span className="text-xs font-medium text-neutral-400">No disponible</span>
+            ) : (
+              <Play size={18} className="text-neutral-400" />
+            )}
           </motion.button>
         );
       })}

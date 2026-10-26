@@ -11,10 +11,19 @@ import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "./firebase";
 import { dateKey } from "../utils/date";
 
-function yesterdayKey() {
-  const d = new Date();
+function yesterdayKey(base = new Date()) {
+  const d = new Date(base);
   d.setDate(d.getDate() - 1);
   return dateKey(d);
+}
+
+// Racha a MOSTRAR. La guardada solo se reescribe en el siguiente check-in, así
+// que si el último fue antes de ayer la racha ya está rota aunque el documento
+// aún diga otra cosa.
+export function currentStreak(profile, now = new Date()) {
+  const last = profile?.lastCheckIn;
+  if (last !== dateKey(now) && last !== yesterdayKey(now)) return 0;
+  return profile.streak || 0;
 }
 
 // Registra la actividad de hoy. Devuelve { streak, incremented } o null si falla.

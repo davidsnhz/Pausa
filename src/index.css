@@ -5,8 +5,12 @@
 /* ============================================================
    Base — feel nativo iOS dentro de WKWebView
    ============================================================ */
+/* Controles nativos (scroll, autocompletado…) del mismo tema que la app. */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
+}
+:root.dark {
+  color-scheme: dark;
 }
 
 html,

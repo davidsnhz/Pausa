@@ -2,23 +2,19 @@
 // ----------------------------------------------------------------------------
 // 8. Perfil: lista tipo Ajustes de iOS. Email, toggle Modo Oscuro (clase `dark`
 // + localStorage + StatusBar nativa), enlaces legales, Cerrar Sesión y Borrar
-// Cuenta (modal propio + reautenticación si Firebase la exige). SIN navbar.
+// Cuenta (modal propio que pide la contraseña y borra cuenta + datos). SIN navbar.
 // ----------------------------------------------------------------------------
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  signOut,
-  deleteUser,
-  reauthenticateWithCredential,
-  EmailAuthProvider,
-  updateProfile,
-} from "firebase/auth";
+import { signOut, updateProfile } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { ArrowLeft, ChevronRight, UserRound, Moon, Shield, FileText, LogOut, Trash2 } from "lucide-react";
 
 import { useAuth, displayNameOf } from "../context/AuthContext";
 import { auth, db } from "../services/firebase";
-import { syncStatusBar } from "../services/native";
+import { deleteAccount } from "../services/account";
+import { setTheme } from "../services/theme";
+import { useGoBack } from "../hooks/useGoBack";
 import Modal from "../components/Modal";
 import Page from "../components/Page";
 
@@ -63,11 +59,11 @@ function Row({ Icon, label, value, danger, chevron, toggle, checked, onToggle, o
 export default function Profile() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const goBack = useGoBack("/");
 
   const [dark, setDark] = useState(document.documentElement.classList.contains("dark"));
   const [showLogout, setShowLogout] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
-  const [needPassword, setNeedPassword] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -115,9 +111,7 @@ export default function Profile() {
   function toggleDark() {
     const next = !dark;
     setDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("theme", next ? "dark" : "light");
-    syncStatusBar(next);
+    setTheme(next);
   }
 
   async function handleLogout() {
@@ -128,32 +122,27 @@ export default function Profile() {
   function openDelete() {
     setError("");
     setPassword("");
-    setNeedPassword(false);
     setShowDelete(true);
   }
 
   async function handleDelete() {
+    if (!password || busy) return;
     setError("");
     setBusy(true);
     try {
-      if (needPassword) {
-        // Reautenticar con la contraseña antes de borrar.
-        const cred = EmailAuthProvider.credential(user.email, password);
-        await reauthenticateWithCredential(auth.currentUser, cred);
-      }
-      await deleteUser(auth.currentUser);
-      // AuthContext detectará la ausencia de sesión y App irá a /login.
+      await deleteAccount(password);
+      // Firestore queda cerrado tras el borrado: recarga limpia hacia el login.
+      window.location.replace("/login");
     } catch (err) {
-      if (err.code === "auth/requires-recent-login") {
-        // Pedir contraseña en el mismo modal y reintentar.
-        setNeedPassword(true);
-        setError("Por seguridad, confirma tu contraseña para borrar la cuenta.");
-      } else if (err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
+      if (err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
         setError("Contraseña incorrecta.");
+      } else if (err.code === "auth/too-many-requests") {
+        setError("Demasiados intentos. Prueba de nuevo en un rato.");
+      } else if (err.code === "auth/network-request-failed" || err.code === "unavailable") {
+        setError("Sin conexión. Revisa tu red e inténtalo de nuevo.");
       } else {
         setError("No se pudo borrar la cuenta. Inténtalo de nuevo.");
       }
-    } finally {
       setBusy(false);
     }
   }
@@ -162,7 +151,7 @@ export default function Profile() {
     <Page>
       <div className="no-scrollbar pt-safe-14 pb-safe-6 flex-1 overflow-y-auto px-5">
         <header className="mb-7 flex items-center gap-4">
-          <button onClick={() => navigate(-1)} aria-label="Volver">
+          <button onClick={goBack} aria-label="Volver">
             <ArrowLeft size={24} />
           </button>
           <h1 className="text-[28px] font-bold tracking-[-0.5px]">Perfil</h1>
@@ -257,19 +246,19 @@ export default function Profile() {
       <Modal open={showDelete} onClose={() => !busy && setShowDelete(false)}>
         <h3 className="mb-2 text-lg font-bold tracking-[-0.5px] text-red-500">Borrar cuenta</h3>
         <p className="mb-4 text-sm text-neutral-500 dark:text-neutral-400">
-          Esta acción es permanente y elimina tu cuenta y tus datos. No se puede deshacer.
+          Esta acción es permanente: elimina tu cuenta y todos tus datos (reflexiones, registros
+          de ánimo y racha). No se puede deshacer. Escribe tu contraseña para confirmar.
         </p>
 
-        {needPassword && (
-          <input
-            type="password"
-            autoFocus
-            placeholder="Tu contraseña"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mb-3 w-full rounded-2xl border border-neutral-200 bg-neutral-100 px-5 py-3.5 text-sm outline-none dark:border-neutral-800 dark:bg-neutral-800"
-          />
-        )}
+        <input
+          type="password"
+          autoComplete="current-password"
+          placeholder="Tu contraseña"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleDelete()}
+          className="mb-3 w-full rounded-2xl border border-neutral-200 bg-neutral-100 px-5 py-3.5 text-sm outline-none dark:border-neutral-800 dark:bg-neutral-800"
+        />
         {error && <p className="mb-3 text-sm text-red-500">{error}</p>}
 
         <div className="flex gap-3">
@@ -282,7 +271,7 @@ export default function Profile() {
           </button>
           <button
             onClick={handleDelete}
-            disabled={busy || (needPassword && !password)}
+            disabled={busy || !password}
             className="flex-1 rounded-2xl bg-red-500 py-3.5 text-sm font-bold text-white disabled:opacity-50"
           >
             {busy ? "Borrando…" : "Borrar"}

@@ -4,9 +4,9 @@
 // Los términos dejan claro que Pausa NO es un servicio médico ni sustituye
 // ayuda profesional, y mencionan la línea 024 (España).
 // ----------------------------------------------------------------------------
-import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import Page from "../components/Page";
+import { useGoBack } from "../hooks/useGoBack";
 
 const CONTENT = {
   privacy: {
@@ -34,14 +34,15 @@ const CONTENT = {
 };
 
 export default function Legal({ doc = "privacy" }) {
-  const navigate = useNavigate();
+  // Se llega desde Perfil; si no hay sesión, /profile acaba en el login.
+  const goBack = useGoBack("/profile");
   const data = CONTENT[doc] || CONTENT.privacy;
 
   return (
     <Page>
       <div className="no-scrollbar pt-safe-14 pb-safe-6 flex-1 overflow-y-auto px-5">
         <header className="mb-6 flex items-center gap-4">
-          <button onClick={() => navigate(-1)} aria-label="Volver">
+          <button onClick={goBack} aria-label="Volver">
             <ArrowLeft size={24} />
           </button>
           <h1 className="text-[22px] font-bold tracking-[-0.5px]">{data.title}</h1>

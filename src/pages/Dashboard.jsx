@@ -12,6 +12,8 @@ import { Flame, User, ChevronRight, MessageCircle } from "lucide-react";
 
 import { useAuth, displayNameOf } from "../context/AuthContext";
 import { db } from "../services/firebase";
+import { currentStreak } from "../services/streak";
+import { useNow } from "../hooks/useNow";
 import { dateKey, greeting, currentWeek } from "../utils/date";
 
 import Mascot from "../components/Mascot";
@@ -22,9 +24,10 @@ export default function Dashboard() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const nombre = displayNameOf(user, profile);
-  const streak = profile?.streak || 0;
-  const week = currentWeek();
-  const todayKey = dateKey();
+  const now = useNow();
+  const streak = currentStreak(profile, now);
+  const week = currentWeek(now);
+  const todayKey = dateKey(now);
 
   const [sheet, setSheet] = useState(null); // { key, label, num, loading, summary, isToday }
 
@@ -55,7 +58,7 @@ export default function Dashboard() {
             <Flame size={16} /> {streak}
           </div>
           <div className="text-center tracking-[-0.5px]">
-            <div className="text-lg font-bold">{greeting()},</div>
+            <div className="text-lg font-bold">{greeting(now)},</div>
             <div className="text-lg font-semibold text-neutral-400">{nombre}</div>
           </div>
           <button

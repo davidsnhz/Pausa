@@ -34,6 +34,18 @@ Abre http://localhost:5173
    contenido de [`firestore.rules`](firestore.rules) → Publicar. (O por CLI:
    `firebase deploy --only firestore:rules`.)
 
+### Probar sin tocar los datos reales (emuladores de Firebase)
+
+Auth y Firestore corren en local con un proyecto ficticio (`demo-pausa`), con
+las mismas reglas de `firestore.rules`. Requiere **Java 21+**.
+
+```bash
+npm run emulators   # terminal 1 — panel en http://localhost:4000
+npm run dev:emu     # terminal 2 — app en http://localhost:5173
+```
+
+Los datos se borran al parar los emuladores.
+
 ### Sonidos ambientales
 
 Coloca 8 archivos `.mp3` en `public/sounds/` con los nombres exactos que indica
@@ -103,6 +115,7 @@ src/
 ├── components/  Mascot, BottomNav, Modal, BottomSheet, Page, ErrorBoundary
 ├── pages/       Splash, Login, Dashboard, Chat, Relax, Stats, Profile, Legal
 ├── context/     AuthContext (sesión Firebase)
-├── services/    firebase, ai, native, streak
+├── hooks/       useNow (fecha al volver a la app), useGoBack (volver seguro)
+├── services/    firebase, ai, native, streak, account, theme
 └── utils/       date (dateKey, greeting, currentWeek)
 ```

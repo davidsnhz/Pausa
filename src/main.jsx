@@ -3,12 +3,11 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AuthProvider } from "./context/AuthContext";
+import { initTheme } from "./services/theme";
 import "./index.css";
 
-// Aplica el tema guardado ANTES de pintar, para evitar parpadeo claro/oscuro.
-if (localStorage.getItem("theme") === "dark") {
-  document.documentElement.classList.add("dark");
-}
+// Aplica el tema (guardado o del sistema) ANTES de pintar, para evitar parpadeo.
+initTheme();
 
 // Registra el Service Worker (PWA) solo en producción; en dev estorbaría al HMR.
 if (import.meta.env.PROD && "serviceWorker" in navigator) {

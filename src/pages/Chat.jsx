@@ -6,7 +6,6 @@
 // tiempo real (onSnapshot). Al salir, se genera y guarda el resumen del día.
 // ----------------------------------------------------------------------------
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   collection,
   addDoc,
@@ -25,13 +24,14 @@ import { getAIReply, getChatSummary } from "../services/ai";
 import { touchStreak } from "../services/streak";
 import { dateKey } from "../utils/date";
 import { hideKeyboard } from "../services/native";
+import { useGoBack } from "../hooks/useGoBack";
 
 import Mascot from "../components/Mascot";
 import Page from "../components/Page";
 
 export default function Chat() {
   const { user, profile } = useAuth();
-  const navigate = useNavigate();
+  const goBack = useGoBack("/");
   const today = dateKey();
 
   // Mensaje de bienvenida de la IA, personalizado con el nombre.
@@ -83,11 +83,13 @@ export default function Chat() {
 
   async function send() {
     const value = text.trim();
-    if (!value || typing) return;
+    if (!value || typing || !messagesCol) return;
     setText("");
+    // "Escribiendo" desde el primer momento: así no se puede mandar otro mensaje
+    // mientras este aún se guarda (con mala conexión puede tardar).
+    setTyping(true);
     hideKeyboard();
 
-    if (!messagesCol) return;
     try {
       // 1) Persistir el mensaje del usuario + contar el check-in del día (racha).
       await addDoc(messagesCol, { role: "user", text: value, createdAt: serverTimestamp() });
@@ -95,7 +97,6 @@ export default function Chat() {
       touchStreak(user.uid);
 
       // 2) Pedir respuesta a la IA (incluye la bienvenida como contexto).
-      setTyping(true);
       const history = [
         { role: "ai", text: WELCOME },
         ...messagesRef.current.map((m) => ({ role: m.role, text: m.text })),
@@ -122,7 +123,7 @@ export default function Chat() {
     <Page>
       <div className="pt-safe-14 pb-safe-6 flex flex-1 flex-col px-5">
         <header className="mb-5 flex items-center">
-          <button onClick={() => navigate(-1)} aria-label="Volver">
+          <button onClick={goBack} aria-label="Volver">
             <ArrowLeft size={24} />
           </button>
           <h2 className="flex-1 pr-6 text-center text-base font-bold tracking-[-0.5px]">
@@ -162,8 +163,9 @@ export default function Chat() {
           />
           <button
             onClick={send}
+            disabled={typing}
             aria-label="Enviar"
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-black text-white transition-transform active:scale-90 dark:bg-white dark:text-black"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-black text-white transition-transform active:scale-90 disabled:opacity-40 dark:bg-white dark:text-black"
           >
             <Send size={18} />
           </button>
