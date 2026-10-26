@@ -15,7 +15,7 @@ const CONTENT = {
       ["Tu privacidad", "Pausa está pensada para ser tu espacio íntimo. Tratamos tus datos con el mínimo imprescindible para que la app funcione."],
       ["Qué guardamos", "Tu correo electrónico (para iniciar sesión), tus reflexiones del chat, tus registros de ánimo y tu racha. Todo se almacena de forma asociada a tu cuenta."],
       ["Dónde se guardan", "Los datos se guardan en los servidores de Firebase (Google Cloud). No vendemos ni compartimos tu información con terceros con fines publicitarios."],
-      ["Tus reflexiones", "El contenido de tu diario es tuyo. Puede procesarse para generar respuestas del acompañante y un breve resumen del día, pero no se usa para perfilarte ni para publicidad."],
+      ["Tus reflexiones", "El contenido de tu diario es tuyo. Para generar las respuestas del acompañante y el breve resumen del día, tus mensajes se envían a Anthropic, el proveedor del modelo de IA (Claude). No se usan para perfilarte ni para publicidad."],
       ["Tus derechos", "Puedes borrar tu cuenta y tus datos en cualquier momento desde Perfil → Borrar Cuenta. La eliminación es permanente."],
       ["Contacto", "Si tienes dudas sobre tus datos, escríbenos desde los ajustes de la app."],
     ],

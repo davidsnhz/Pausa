@@ -1,36 +1,22 @@
 // services/ai.js
 // ----------------------------------------------------------------------------
-// Adaptador de IA para el chat. Función principal: getAIReply(history).
+// Adaptador de IA para el chat: getAIReply(history, name) y getChatSummary(history).
 //
-// - Si existe VITE_AI_PROXY_URL, se llama a ese endpoint propio (una Cloud
-//   Function de Firebase que a su vez habla con la API de Anthropic). La clave
-//   de la API vive SOLO en el backend, NUNCA en el frontend.
-// - Si no existe, se usa el modo fallback: respuestas empáticas variadas en
-//   español, para que la app sea plenamente funcional sin backend.
+// - Llama a /api/chat (función de Vercel, ver api/chat.js) con el ID token de
+//   Firebase. La clave de Anthropic y el prompt de sistema viven allí, NUNCA en
+//   el frontend. VITE_AI_PROXY_URL permite apuntar a otra URL (p. ej. desde la
+//   app nativa, donde una ruta relativa no llega a Vercel).
+// - Si no hay IA disponible (en local con `npm run dev`, sin clave configurada,
+//   sin conexión…), modo fallback: respuestas empáticas fijas en español, para
+//   que la app siga funcionando.
 // ----------------------------------------------------------------------------
+import { auth } from "./firebase";
 
-const PROXY_URL = import.meta.env.VITE_AI_PROXY_URL;
-
-// Prompt de sistema del acompañante (se envía al proxy; el proxy decide cómo
-// usarlo con Anthropic). Se exporta por si el backend quiere reutilizarlo.
-export const SYSTEM_PROMPT =
-  "Eres el acompañante de Pausa, un diario personal. Hablas en español con " +
-  "calidez, cercanía y contención, con la sensibilidad de alguien con formación " +
-  "en escucha y apoyo emocional. Tu estilo: primero VALIDAS y reflejas lo que la " +
-  "persona siente para que se sienta comprendida; después puedes ofrecer una " +
-  "perspectiva amable, normalizar su experiencia o sugerir una herramienta " +
-  "sencilla (una respiración, un reencuadre, un pequeño paso concreto). NO " +
-  "respondas siempre con una pregunta: alterna reflexión, validación y apoyo, y " +
-  "solo a veces cierra con UNA pregunta abierta. Responde en 2-4 frases, humanas " +
-  "y concretas, sin tecnicismos. No das diagnósticos clínicos ni prescribes " +
-  "tratamiento, y recuerdas con naturalidad que Pausa acompaña pero no sustituye " +
-  "a un profesional de la salud mental. Si detectas crisis o riesgo, con " +
-  "delicadeza animas a apoyarse en alguien de confianza o a llamar a la línea 024 " +
-  "(España). Nunca juzgas.";
+const PROXY_URL = import.meta.env.VITE_AI_PROXY_URL || "/api/chat";
+const TIMEOUT_MS = 25000;
 
 // Respuestas del modo fallback: validan, normalizan y acompañan (no solo
-// preguntan). Son frases fijas al azar; para respuestas realmente inteligentes
-// hay que conectar un modelo real vía VITE_AI_PROXY_URL.
+// preguntan). Son frases fijas al azar.
 const FALLBACK_REPLIES = [
   "Gracias por ponerlo en palabras. Lo que sientes tiene sentido después de un día así; no estás exagerando.",
   "Te leo y quiero que lo sepas: no estás solo en esto. A veces nombrar lo que pesa ya alivia un poco.",
@@ -70,66 +56,56 @@ function pickFallback(history) {
   return FALLBACK_REPLIES[Math.floor(Math.random() * FALLBACK_REPLIES.length)];
 }
 
-/**
- * Devuelve la respuesta de la IA para un historial de mensajes.
- * @param {{role: "user"|"ai", text: string}[]} history
- * @returns {Promise<string>}
- */
-export async function getAIReply(history) {
-  if (!PROXY_URL) {
-    // Pequeña latencia simulada para que aparezca el indicador de escribiendo.
-    await new Promise((r) => setTimeout(r, 700 + Math.random() * 600));
-    return pickFallback(history);
-  }
-
+// Llama a /api/chat. Devuelve el texto, o null si no hay IA disponible.
+async function callAI(mode, messages, name) {
   try {
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) return null;
     const res = await fetch(PROXY_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ system: SYSTEM_PROMPT, messages: history }),
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ mode, name, messages }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
-    if (!res.ok) throw new Error(`Proxy respondió ${res.status}`);
+    // Sin función desplegada (p. ej. `npm run dev` devuelve el HTML de la app)
+    // o sin clave configurada (503): fallback sin más ruido.
+    const isJson = res.headers.get("content-type")?.includes("application/json");
+    if (!isJson || res.status === 503) return null;
+    if (!res.ok) {
+      console.warn(`[Pausa] La IA respondió ${res.status}, usando fallback.`);
+      return null;
+    }
     const data = await res.json();
-    // Se espera { reply: "..." }; si no, caemos al fallback.
-    return data.reply || pickFallback(history);
+    return typeof data.reply === "string" && data.reply.trim() ? data.reply.trim() : null;
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn("[Pausa] Error llamando al proxy de IA, usando fallback:", err);
-    return pickFallback(history);
+    console.warn("[Pausa] Error llamando a la IA, usando fallback:", err);
+    return null;
   }
 }
 
 /**
+ * Devuelve la respuesta del acompañante para un historial de mensajes.
+ * @param {{role: "user"|"ai", text: string}[]} history
+ * @param {string} [name] nombre con el que saludar
+ * @returns {Promise<string>}
+ */
+export async function getAIReply(history, name = "") {
+  const reply = await callAI("reply", history, name);
+  if (reply) return reply;
+  // Pequeña latencia simulada para que aparezca el indicador de escribiendo.
+  await new Promise((r) => setTimeout(r, 700 + Math.random() * 600));
+  return pickFallback(history);
+}
+
+/**
  * Genera un resumen breve del día a partir del historial del chat.
- * Sin proxy, produce un resumen local sencillo (primer mensaje del usuario).
+ * Sin IA, el resumen es el primer mensaje de la persona (recortado).
  * @param {{role: "user"|"ai", text: string}[]} history
  * @returns {Promise<string>}
  */
 export async function getChatSummary(history) {
-  const firstUser = history.find((m) => m.role === "user");
-  const base = firstUser?.text?.trim() || "";
-
-  if (!PROXY_URL) {
-    if (!base) return "";
-    return base.length > 90 ? base.slice(0, 87) + "…" : base;
-  }
-
-  try {
-    const res = await fetch(PROXY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        system:
-          "Resume en una sola frase breve, cálida y en español el tema principal " +
-          "de esta conversación de diario. Sin comillas.",
-        messages: history,
-        mode: "summary",
-      }),
-    });
-    if (!res.ok) throw new Error(`Proxy respondió ${res.status}`);
-    const data = await res.json();
-    return data.reply || (base ? base.slice(0, 90) : "");
-  } catch {
-    return base ? base.slice(0, 90) : "";
-  }
+  const summary = await callAI("summary", history);
+  if (summary) return summary;
+  const first = history.find((m) => m.role === "user")?.text?.trim() || "";
+  return first.length > 90 ? first.slice(0, 87) + "…" : first;
 }

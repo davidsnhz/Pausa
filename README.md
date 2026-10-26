@@ -53,12 +53,24 @@ Coloca 8 archivos `.mp3` en `public/sounds/` con los nombres exactos que indica
 Relax funciona pero no suena nada. Fuentes libres: Pixabay, Freesound (CC0),
 Mixkit.
 
-### Chat con IA (opcional)
+### Chat con IA (Claude)
 
-Sin configurar nada, el chat responde con frases empáticas de _fallback_. Para
-conectar un modelo real, define `VITE_AI_PROXY_URL` apuntando a un endpoint
-propio (p. ej. una Cloud Function que hable con la API de Anthropic). **La clave
-de la API vive solo en el backend, nunca en el frontend.**
+El acompañante responde con Claude a través de la función de Vercel
+[`api/chat.js`](api/chat.js). **La clave de la API vive solo ahí, nunca en el
+frontend**, y la función solo atiende a usuarios con sesión (verifica el token
+de Firebase). Para activarla:
+
+1. Crea una clave en https://console.anthropic.com → API Keys.
+2. En Vercel → Settings → Environment Variables, añade `ANTHROPIC_API_KEY`
+   (marca Production y Preview). Opcional: `ANTHROPIC_MODEL` para usar otro
+   modelo (por defecto `claude-opus-5-5`; `claude-haiku-5-5` es mucho más barato).
+3. Vuelve a desplegar. Recomendado: pon un límite de gasto mensual en la consola
+   de Anthropic (Settings → Limits).
+
+Sin clave (o en local con `npm run dev`, donde no corre la función), el chat
+responde con frases empáticas de _fallback_ y la app sigue funcionando.
+`VITE_AI_PROXY_URL` solo hace falta para apuntar a otra URL (p. ej. desde la
+app nativa).
 
 ---
 
@@ -111,6 +123,8 @@ Se hará en una fase posterior sobre un Mac.
 ## Estructura
 
 ```
+api/
+└── chat.js      Función de Vercel: el acompañante con Claude (la clave vive aquí)
 src/
 ├── components/  Mascot, BottomNav, Modal, BottomSheet, Page, ErrorBoundary
 ├── pages/       Splash, Login, Dashboard, Chat, Relax, Stats, Profile, Legal

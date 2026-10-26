@@ -3,7 +3,8 @@
 // 4. Chat "Tu espacio seguro": pantalla completa SIN navbar. Burbujas de
 // usuario oscuras a la derecha, IA claras a la izquierda con mini-mascota
 // "listening". Indicador de escribiendo. Mensajes persistidos en Firestore en
-// tiempo real (onSnapshot). Al salir, se genera y guarda el resumen del día.
+// tiempo real (onSnapshot). Tras cada respuesta se actualiza el resumen del día
+// (alimenta el Dashboard), así está al día aunque se cierre la app sin "volver".
 // ----------------------------------------------------------------------------
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
@@ -44,8 +45,6 @@ export default function Chat() {
 
   const scrollRef = useRef(null);
   const scrolledOnce = useRef(false);
-  const messagesRef = useRef([]); // copia viva para el resumen al desmontar.
-  messagesRef.current = messages || [];
 
   const chatDoc = user ? doc(db, "users", user.uid, "chats", today) : null;
   const messagesCol = user
@@ -74,18 +73,6 @@ export default function Chat() {
     scrolledOnce.current = true;
   }, [messages, typing]);
 
-  // Al salir del chat: generar resumen del día y guardarlo (alimenta el Dashboard).
-  useEffect(() => {
-    return () => {
-      const history = messagesRef.current.map((m) => ({ role: m.role, text: m.text }));
-      if (!chatDoc || history.length === 0) return;
-      getChatSummary(history).then((summary) => {
-        setDoc(chatDoc, { summary, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
-      });
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
   async function send() {
     const value = text.trim();
     if (!value || typing || !messagesCol) return;
@@ -95,21 +82,29 @@ export default function Chat() {
     setTyping(true);
     hideKeyboard();
 
+    // Historial ANTES de guardar: el mensaje nuevo aún no ha llegado por
+    // onSnapshot, así que va una sola vez (al final).
+    const history = [
+      { role: "ai", text: WELCOME },
+      ...(messages || []).map((m) => ({ role: m.role, text: m.text })),
+      { role: "user", text: value },
+    ];
+
     try {
       // 1) Persistir el mensaje del usuario + contar el check-in del día (racha).
+      //    lastMessage es siempre lo que escribe la persona (respaldo del resumen).
       await addDoc(messagesCol, { role: "user", text: value, createdAt: serverTimestamp() });
       await setDoc(chatDoc, { lastMessage: value, updatedAt: serverTimestamp() }, { merge: true });
       touchStreak(user.uid);
 
-      // 2) Pedir respuesta a la IA (incluye la bienvenida como contexto).
-      const history = [
-        { role: "ai", text: WELCOME },
-        ...messagesRef.current.map((m) => ({ role: m.role, text: m.text })),
-        { role: "user", text: value },
-      ];
-      const reply = await getAIReply(history);
+      // 2) Pedir respuesta a la IA.
+      const reply = await getAIReply(history, nombre);
       await addDoc(messagesCol, { role: "ai", text: reply, createdAt: serverTimestamp() });
-      await setDoc(chatDoc, { lastMessage: reply, updatedAt: serverTimestamp() }, { merge: true });
+
+      // 3) Actualizar el resumen del día en segundo plano (no hace esperar).
+      getChatSummary([...history, { role: "ai", text: reply }])
+        .then((summary) => summary && setDoc(chatDoc, { summary }, { merge: true }))
+        .catch(() => {});
     } catch {
       /* si falla la persistencia (Firebase sin configurar), no rompemos la UI */
     } finally {
@@ -166,6 +161,7 @@ export default function Chat() {
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={onKeyDown}
+            maxLength={2000}
             placeholder="Escribe lo que sientes..."
             className="flex-1 rounded-full bg-neutral-100 px-5 py-3.5 text-sm outline-none placeholder:text-neutral-400 dark:bg-neutral-900"
           />
