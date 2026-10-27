@@ -272,8 +272,12 @@ export default function Profile() {
             : exportError}
         </p>
         {exportFile && (
-          <p className="mb-3 truncate rounded-2xl bg-neutral-100 px-5 py-3.5 text-sm font-medium dark:bg-neutral-800">
-            {exportFile.name} · {Math.max(1, Math.round(exportFile.size / 1024))} KB
+          // El tamaño en su propia columna: si el nombre no cabe, se corta él.
+          <p className="mb-3 flex gap-3 rounded-2xl bg-neutral-100 px-5 py-3.5 text-sm font-medium dark:bg-neutral-800">
+            <span className="min-w-0 truncate">{exportFile.name}</span>
+            <span className="ml-auto shrink-0 text-neutral-400">
+              {Math.max(1, Math.round(exportFile.size / 1024))} KB
+            </span>
           </p>
         )}
         <div className="flex gap-3">

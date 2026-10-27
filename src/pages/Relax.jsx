@@ -365,8 +365,9 @@ function BreathingTab({ ambient }) {
 
       <BottomSheet open={picker} onClose={() => setPicker(false)}>
         <h3 className="mb-4 text-xl font-bold tracking-[-0.5px]">Sonido de fondo</h3>
+        {/* Aquí solo los que ya se pueden escuchar. */}
         <div className="no-scrollbar max-h-[55vh] space-y-2 overflow-y-auto">
-          {SOUNDS.map((sound) => (
+          {SOUNDS.filter((s) => !s.soon).map((sound) => (
             <SoundButton key={sound.id} sound={sound} ambient={ambient} onClick={() => choose(sound)} />
           ))}
         </div>
