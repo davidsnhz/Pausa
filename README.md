@@ -46,6 +46,17 @@ npm run dev:emu     # terminal 2 — app en http://localhost:5173
 
 Los datos se borran al parar los emuladores.
 
+### Textos legales y consentimiento
+
+Privacidad y Términos viven en `src/components/LegalText.jsx`; responsable,
+correo de contacto, edad mínima y versión, en `src/utils/legal.js`. Al crear
+cuenta hay que aceptarlos y se guarda la versión aceptada en `users/{uid}`.
+**Si cambias los textos, sube `LEGAL.version`**: a cada persona se le pedirá
+aceptarlos de nuevo antes de seguir usando la app.
+
+El correo de "¿Olvidaste tu contraseña?" lo envía Firebase en español; puedes
+personalizarlo en Authentication → Templates.
+
 ### Sonidos ambientales
 
 Coloca 8 archivos `.mp3` en `public/sounds/` con los nombres exactos que indica

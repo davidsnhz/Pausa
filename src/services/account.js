@@ -1,20 +1,87 @@
 // services/account.js
 // ----------------------------------------------------------------------------
-// Borrado completo de la cuenta (guideline 5.1.1v de Apple y RGPD).
-// Orden: reautenticar → borrar datos de Firestore → borrar usuario de Auth.
-// Si se borrase antes el usuario, las reglas ya no dejarían tocar sus datos y
-// se quedarían huérfanos para siempre.
+// Operaciones sobre la cuenta ligadas al RGPD:
+//  - acceptTerms: deja constancia del consentimiento (versión + fecha).
+//  - exportUserData: derecho de portabilidad, todos los datos en un JSON.
+//  - deleteAccount: borrado completo (también guideline 5.1.1v de Apple).
+//    Orden: reautenticar → borrar datos de Firestore → borrar usuario de Auth.
+//    Si se borrase antes el usuario, las reglas ya no dejarían tocar sus datos
+//    y se quedarían huérfanos para siempre.
 // ----------------------------------------------------------------------------
 import { EmailAuthProvider, deleteUser, reauthenticateWithCredential } from "firebase/auth";
 import {
   clearIndexedDbPersistence,
   collection,
   doc,
+  getDocFromServer,
   getDocsFromServer,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
   terminate,
   writeBatch,
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
+import { LEGAL } from "../utils/legal";
+import { dateKey } from "../utils/date";
+
+// Consentimiento a la versión vigente de Términos y Privacidad, incluido el
+// consentimiento explícito para los datos de bienestar emocional.
+export function acceptTerms(uid) {
+  return setDoc(
+    doc(db, "users", uid),
+    { termsVersion: LEGAL.version, termsAcceptedAt: serverTimestamp() },
+    { merge: true }
+  );
+}
+
+// Todos los datos de la cuenta en un archivo JSON legible (art. 20 RGPD).
+// Se lee del servidor para que esté completo, no de la caché local.
+export async function exportUserData(user) {
+  const iso = (ts) => (ts?.toDate ? ts.toDate().toISOString() : null);
+  const userRef = doc(db, "users", user.uid);
+  const [profileSnap, moods, chats] = await Promise.all([
+    getDocFromServer(userRef),
+    getDocsFromServer(collection(userRef, "moods")),
+    getDocsFromServer(collection(userRef, "chats")),
+  ]);
+  const messages = await Promise.all(
+    chats.docs.map((chat) =>
+      getDocsFromServer(query(collection(chat.ref, "messages"), orderBy("createdAt")))
+    )
+  );
+  const p = profileSnap.exists() ? profileSnap.data() : {};
+
+  const data = {
+    exportadoEl: new Date().toISOString(),
+    cuenta: {
+      correo: user.email,
+      creadaEl: user.metadata?.creationTime ? new Date(user.metadata.creationTime).toISOString() : null,
+    },
+    perfil: {
+      nombre: p.displayName ?? null,
+      racha: p.streak ?? 0,
+      ultimoCheckIn: p.lastCheckIn ?? null,
+      terminosAceptados: p.termsVersion ?? null,
+      terminosAceptadosEl: iso(p.termsAcceptedAt),
+    },
+    animos: moods.docs.map((d) => ({ fecha: d.id, emoji: d.data().emoji })),
+    diario: chats.docs.map((chat, i) => ({
+      fecha: chat.id,
+      resumen: chat.data().summary ?? null,
+      mensajes: messages[i].docs.map((m) => ({
+        de: m.data().role === "ai" ? "acompañante" : "tú",
+        texto: m.data().text,
+        hora: iso(m.data().createdAt),
+      })),
+    })),
+  };
+
+  return new File([JSON.stringify(data, null, 2)], `pausa-mis-datos-${dateKey()}.json`, {
+    type: "application/json",
+  });
+}
 
 // Firestore admite como máximo 500 operaciones por lote.
 const BATCH_LIMIT = 500;

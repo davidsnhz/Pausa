@@ -45,6 +45,8 @@ if (!isFirebaseConfigured) {
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
+// Correos de Firebase (p. ej. recuperar contraseña) en español.
+auth.languageCode = "es";
 
 // Firestore con caché local persistente (IndexedDB): al reentrar en una
 // pantalla los datos salen al instante desde caché (sin "pop" de actualización)

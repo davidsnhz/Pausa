@@ -2,19 +2,22 @@
 // ----------------------------------------------------------------------------
 // Shell de la app: tema (dark mode), enrutado con transiciones, rutas
 // protegidas por AuthContext y navbar flotante visible solo donde toca.
-// Mientras la sesión se resuelve (loading), se muestra el Splash.
+// Mientras la sesión se resuelve (loading), se muestra el Splash; si la cuenta
+// no ha aceptado los textos legales vigentes, la pantalla de consentimiento.
 // ----------------------------------------------------------------------------
 import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 
 import { useAuth } from "./context/AuthContext";
 import { hideSplash, syncStatusBar } from "./services/native";
+import { LEGAL } from "./utils/legal";
 
 import BottomNav from "./components/BottomNav";
 import ErrorBoundary from "./components/ErrorBoundary";
-// Splash, Login y Dashboard van en el bundle inicial (lo primero que se ve).
+// Splash, Login, Consent y Dashboard van en el bundle inicial (lo primero que se ve).
 import Splash from "./pages/Splash";
 import Login from "./pages/Login";
+import Consent from "./pages/Consent";
 import Dashboard from "./pages/Dashboard";
 // El resto se cargan bajo demanda (code-splitting) para acelerar el arranque.
 // Con v7_startTransition activo, la navegación mantiene la pantalla actual
@@ -43,7 +46,7 @@ function Protected({ user, loading, children }) {
 }
 
 export default function App() {
-  const { user, loading } = useAuth();
+  const { user, loading, profile } = useAuth();
   const location = useLocation();
 
   // Sincroniza la StatusBar nativa con el tema actual y oculta el splash nativo.
@@ -69,6 +72,20 @@ export default function App() {
     return (
       <div className="flex h-full w-full flex-col bg-white text-black dark:bg-black dark:text-white">
         <Splash />
+      </div>
+    );
+  }
+
+  // Cuenta sin aceptar la versión vigente de Términos y Privacidad: primero el
+  // consentimiento (los textos siguen accesibles). Una cuenta recién creada aún
+  // no tiene documento y no se le pide: el registro ya guarda la aceptación.
+  const hasProfileDoc = !!profile && Object.keys(profile).length > 0;
+  const needsConsent = !!user && hasProfileDoc && profile.termsVersion !== LEGAL.version;
+  const onLegalPage = location.pathname === "/privacy" || location.pathname === "/terms";
+  if (needsConsent && !onLegalPage) {
+    return (
+      <div className="relative flex h-full w-full flex-col overflow-hidden bg-white text-black dark:bg-black dark:text-white">
+        <Consent />
       </div>
     );
   }

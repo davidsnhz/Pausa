@@ -1,22 +1,38 @@
 // pages/Profile.jsx
 // ----------------------------------------------------------------------------
 // 8. Perfil: lista tipo Ajustes de iOS. Email, toggle Modo Oscuro (clase `dark`
-// + localStorage + StatusBar nativa), enlaces legales, Cerrar Sesión y Borrar
-// Cuenta (modal propio que pide la contraseña y borra cuenta + datos). SIN navbar.
+// + localStorage + StatusBar nativa), enlaces legales y contacto, Descargar mis
+// datos (RGPD), Cerrar Sesión y Borrar Cuenta (modal propio que pide la
+// contraseña y borra cuenta + datos). SIN navbar.
 // ----------------------------------------------------------------------------
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { signOut, updateProfile } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
-import { ArrowLeft, ChevronRight, UserRound, Moon, Shield, FileText, LogOut, Trash2 } from "lucide-react";
+import {
+  ArrowLeft, ChevronRight, UserRound, Moon, Shield, FileText, Mail, Download, LogOut, Trash2,
+} from "lucide-react";
 
 import { useAuth, displayNameOf } from "../context/AuthContext";
 import { auth, db } from "../services/firebase";
-import { deleteAccount } from "../services/account";
+import { deleteAccount, exportUserData } from "../services/account";
 import { setTheme } from "../services/theme";
 import { useGoBack } from "../hooks/useGoBack";
+import { LEGAL } from "../utils/legal";
 import Modal from "../components/Modal";
 import Page from "../components/Page";
+
+// Descarga directa de un archivo generado en la app.
+function download(file) {
+  const url = URL.createObjectURL(file);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = file.name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 // Fila reutilizable estilo Ajustes.
 function Row({ Icon, label, value, danger, chevron, toggle, checked, onToggle, onClick }) {
@@ -75,8 +91,52 @@ export default function Profile() {
   const [nameError, setNameError] = useState("");
   const [savingName, setSavingName] = useState(false);
 
+  // Descargar mis datos: se prepara el archivo y luego se guarda con un toque
+  // (la hoja de compartir del móvil exige un toque reciente).
+  const [exporting, setExporting] = useState(false);
+  const [exportFile, setExportFile] = useState(null);
+  const [exportError, setExportError] = useState("");
+  const [showExport, setShowExport] = useState(false);
+
   const nombre = displayNameOf(user, profile) || "Tú";
   const inicial = nombre.charAt(0).toUpperCase();
+
+  async function handleExport() {
+    if (exporting) return;
+    setExporting(true);
+    setExportError("");
+    try {
+      setExportFile(await exportUserData(user));
+    } catch (err) {
+      setExportFile(null);
+      setExportError(
+        err.code === "unavailable"
+          ? "Necesitas conexión para descargar tus datos."
+          : "No se pudieron preparar tus datos. Inténtalo de nuevo."
+      );
+    } finally {
+      setExporting(false);
+      setShowExport(true);
+    }
+  }
+
+  async function saveExport() {
+    const file = exportFile;
+    // En el móvil, la hoja de compartir permite guardarlo en Archivos (más
+    // fiable que una descarga en una PWA de iPhone); en el ordenador, descarga.
+    const touch = window.matchMedia("(pointer: coarse)").matches;
+    if (touch && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: "Mis datos de Pausa" });
+      } catch (err) {
+        if (err.name !== "AbortError") download(file);
+        else return; // cancelado: el modal sigue abierto
+      }
+    } else {
+      download(file);
+    }
+    setShowExport(false);
+  }
 
   function openName() {
     setNewName(displayNameOf(user, profile));
@@ -176,16 +236,64 @@ export default function Profile() {
 
         <p className="mb-3 text-sm font-semibold text-neutral-400">Legal</p>
         <div className="mb-6 overflow-hidden rounded-2xl bg-neutral-100 dark:bg-neutral-900">
-          <Row Icon={Shield} label="Políticas de Privacidad" chevron onClick={() => navigate("/privacy")} />
+          <Row Icon={Shield} label="Política de Privacidad" chevron onClick={() => navigate("/privacy")} />
           <Row Icon={FileText} label="Términos y Condiciones" chevron onClick={() => navigate("/terms")} />
+          <Row
+            Icon={Mail}
+            label="Contacto"
+            chevron
+            onClick={() => (window.location.href = `mailto:${LEGAL.email}?subject=Pausa`)}
+          />
         </div>
 
         <p className="mb-3 text-sm font-semibold text-neutral-400">Cuenta</p>
         <div className="overflow-hidden rounded-2xl bg-neutral-100 dark:bg-neutral-900">
+          <Row
+            Icon={Download}
+            label="Descargar mis datos"
+            value={exporting ? "Preparando…" : null}
+            chevron={!exporting}
+            onClick={handleExport}
+          />
           <Row Icon={LogOut} label="Cerrar Sesión" onClick={() => setShowLogout(true)} />
           <Row Icon={Trash2} label="Borrar Cuenta" danger onClick={openDelete} />
         </div>
       </div>
+
+      {/* Modal: descargar mis datos */}
+      <Modal open={showExport} onClose={() => setShowExport(false)}>
+        <h3 className="mb-2 text-lg font-bold tracking-[-0.5px]">
+          {exportFile ? "Tus datos están listos" : "No se pudo preparar"}
+        </h3>
+        <p className="mb-4 text-sm text-neutral-500 dark:text-neutral-400">
+          {exportFile
+            ? "Un archivo con tu cuenta, tu diario, tus registros de ánimo y tu racha. Guárdalo en un lugar seguro: contiene tus reflexiones."
+            : exportError}
+        </p>
+        {exportFile && (
+          <p className="mb-3 truncate rounded-2xl bg-neutral-100 px-5 py-3.5 text-sm font-medium dark:bg-neutral-800">
+            {exportFile.name} · {Math.max(1, Math.round(exportFile.size / 1024))} KB
+          </p>
+        )}
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowExport(false)}
+            className={`flex-1 rounded-2xl py-3.5 text-sm font-bold ${
+              exportFile ? "bg-neutral-100 dark:bg-neutral-800" : "bg-black text-white dark:bg-white dark:text-black"
+            }`}
+          >
+            {exportFile ? "Cerrar" : "Entendido"}
+          </button>
+          {exportFile && (
+            <button
+              onClick={saveExport}
+              className="flex-1 rounded-2xl bg-black py-3.5 text-sm font-bold text-white dark:bg-white dark:text-black"
+            >
+              Guardar archivo
+            </button>
+          )}
+        </div>
+      </Modal>
 
       {/* Modal: cambiar nombre */}
       <Modal open={showName} onClose={() => !savingName && setShowName(false)}>
