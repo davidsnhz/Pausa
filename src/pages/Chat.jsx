@@ -3,7 +3,9 @@
 // 4. Chat "Tu espacio seguro": pantalla completa SIN navbar. Burbujas de
 // usuario oscuras a la derecha, IA claras a la izquierda con mini-mascota
 // "listening". Indicador de escribiendo. Mensajes persistidos en Firestore en
-// tiempo real (onSnapshot). Al salir, se genera y guarda el resumen del día.
+// tiempo real (onSnapshot). Tras cada respuesta se actualiza el resumen del día
+// (alimenta el Dashboard), así está al día aunque se cierre la app sin "volver".
+// En /chat/AAAA-MM-DD muestra la conversación de un día anterior, solo lectura.
 // ----------------------------------------------------------------------------
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
@@ -17,12 +19,13 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { ArrowLeft, Send } from "lucide-react";
+import { useParams } from "react-router";
 
 import { useAuth, displayNameOf } from "../context/AuthContext";
 import { db } from "../services/firebase";
 import { getAIReply, getChatSummary } from "../services/ai";
 import { touchStreak } from "../services/streak";
-import { dateKey } from "../utils/date";
+import { dateKey, longDate } from "../utils/date";
 import { hideKeyboard } from "../services/native";
 import { useGoBack } from "../hooks/useGoBack";
 
@@ -33,6 +36,10 @@ export default function Chat() {
   const { user, profile } = useAuth();
   const goBack = useGoBack("/");
   const today = dateKey();
+  // Día que se muestra: hoy, o uno anterior (solo lectura) si viene en la URL.
+  const { fecha } = useParams();
+  const day = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(fecha || "") && fecha < today ? fecha : today;
+  const readOnly = day !== today;
 
   // Mensaje de bienvenida de la IA, personalizado con el nombre.
   const nombre = displayNameOf(user, profile);
@@ -44,26 +51,23 @@ export default function Chat() {
 
   const scrollRef = useRef(null);
   const scrolledOnce = useRef(false);
-  const messagesRef = useRef([]); // copia viva para el resumen al desmontar.
-  messagesRef.current = messages || [];
 
-  const chatDoc = user ? doc(db, "users", user.uid, "chats", today) : null;
+  const chatDoc = user ? doc(db, "users", user.uid, "chats", day) : null;
   const messagesCol = user
-    ? collection(db, "users", user.uid, "chats", today, "messages")
+    ? collection(db, "users", user.uid, "chats", day, "messages")
     : null;
 
   // Suscripción en tiempo real a los mensajes del día.
+  const uid = user?.uid;
   useEffect(() => {
-    if (!messagesCol) return;
-    const q = query(messagesCol, orderBy("createdAt", "asc"));
-    const unsub = onSnapshot(
+    if (!uid) return;
+    const q = query(collection(db, "users", uid, "chats", day, "messages"), orderBy("createdAt", "asc"));
+    return onSnapshot(
       q,
       (snap) => setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
       () => setMessages([])
     );
-    return unsub;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [uid, day]);
 
   // Autoscroll al final cuando llegan mensajes o aparece el indicador. La
   // primera vez, directo y antes de pintar (sin verse el desplazamiento); luego, suave.
@@ -74,42 +78,38 @@ export default function Chat() {
     scrolledOnce.current = true;
   }, [messages, typing]);
 
-  // Al salir del chat: generar resumen del día y guardarlo (alimenta el Dashboard).
-  useEffect(() => {
-    return () => {
-      const history = messagesRef.current.map((m) => ({ role: m.role, text: m.text }));
-      if (!chatDoc || history.length === 0) return;
-      getChatSummary(history).then((summary) => {
-        setDoc(chatDoc, { summary, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
-      });
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
   async function send() {
     const value = text.trim();
-    if (!value || typing || !messagesCol) return;
+    if (!value || typing || !messagesCol || readOnly) return;
     setText("");
     // "Escribiendo" desde el primer momento: así no se puede mandar otro mensaje
     // mientras este aún se guarda (con mala conexión puede tardar).
     setTyping(true);
     hideKeyboard();
 
+    // Historial ANTES de guardar: el mensaje nuevo aún no ha llegado por
+    // onSnapshot, así que va una sola vez (al final).
+    const history = [
+      { role: "ai", text: WELCOME },
+      ...(messages || []).map((m) => ({ role: m.role, text: m.text })),
+      { role: "user", text: value },
+    ];
+
     try {
       // 1) Persistir el mensaje del usuario + contar el check-in del día (racha).
+      //    lastMessage es siempre lo que escribe la persona (respaldo del resumen).
       await addDoc(messagesCol, { role: "user", text: value, createdAt: serverTimestamp() });
       await setDoc(chatDoc, { lastMessage: value, updatedAt: serverTimestamp() }, { merge: true });
       touchStreak(user.uid);
 
-      // 2) Pedir respuesta a la IA (incluye la bienvenida como contexto).
-      const history = [
-        { role: "ai", text: WELCOME },
-        ...messagesRef.current.map((m) => ({ role: m.role, text: m.text })),
-        { role: "user", text: value },
-      ];
+      // 2) Pedir respuesta a la IA.
       const reply = await getAIReply(history);
       await addDoc(messagesCol, { role: "ai", text: reply, createdAt: serverTimestamp() });
-      await setDoc(chatDoc, { lastMessage: reply, updatedAt: serverTimestamp() }, { merge: true });
+
+      // 3) Actualizar el resumen del día en segundo plano (no hace esperar).
+      getChatSummary([...history, { role: "ai", text: reply }])
+        .then((summary) => summary && setDoc(chatDoc, { summary }, { merge: true }))
+        .catch(() => {});
     } catch {
       /* si falla la persistencia (Firebase sin configurar), no rompemos la UI */
     } finally {
@@ -134,7 +134,7 @@ export default function Chat() {
             <ArrowLeft size={24} />
           </button>
           <h2 className="flex-1 pr-6 text-center text-base font-bold tracking-[-0.5px]">
-            Tu espacio seguro
+            {readOnly ? longDate(day) : "Tu espacio seguro"}
           </h2>
         </header>
 
@@ -148,7 +148,7 @@ export default function Chat() {
             m.role === "user" ? (
               <div
                 key={m.id}
-                className="ml-auto max-w-[85%] rounded-[20px] rounded-br-[4px] bg-black p-4 text-sm leading-relaxed text-white dark:bg-white dark:text-black"
+                className="ml-auto max-w-[85%] rounded-[20px] rounded-br-[4px] bg-black p-4 text-sm leading-relaxed break-words text-white dark:bg-white dark:text-black"
               >
                 {m.text}
               </div>
@@ -160,24 +160,27 @@ export default function Chat() {
           {typing && <TypingIndicator />}
         </div>
 
-        {/* Barra de entrada */}
-        <div className="flex items-center gap-2.5 pt-2">
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder="Escribe lo que sientes..."
-            className="flex-1 rounded-full bg-neutral-100 px-5 py-3.5 text-sm outline-hidden placeholder:text-neutral-400 dark:bg-neutral-900"
-          />
-          <button
-            onClick={send}
-            disabled={typing}
-            aria-label="Enviar"
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-black text-white transition-transform active:scale-90 disabled:opacity-40 dark:bg-white dark:text-black"
-          >
-            <Send size={18} />
-          </button>
-        </div>
+        {/* Barra de entrada (no en días anteriores: solo se leen) */}
+        {!readOnly && (
+          <div className="flex items-center gap-2.5 pt-2">
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={onKeyDown}
+              maxLength={2000}
+              placeholder="Escribe lo que sientes..."
+              className="flex-1 rounded-full bg-neutral-100 px-5 py-3.5 text-sm outline-hidden placeholder:text-neutral-400 dark:bg-neutral-900"
+            />
+            <button
+              onClick={send}
+              disabled={typing}
+              aria-label="Enviar"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-black text-white transition-transform active:scale-90 disabled:opacity-40 dark:bg-white dark:text-black"
+            >
+              <Send size={18} />
+            </button>
+          </div>
+        )}
       </div>
     </Page>
   );
@@ -190,7 +193,7 @@ function AiBubble({ text }) {
       <div className="mt-1 shrink-0">
         <Mascot state="listening" size={28} />
       </div>
-      <div className="max-w-[85%] rounded-[20px] rounded-bl-[4px] bg-neutral-100 p-4 text-sm leading-relaxed dark:bg-neutral-900">
+      <div className="max-w-[85%] rounded-[20px] rounded-bl-[4px] bg-neutral-100 p-4 text-sm leading-relaxed break-words dark:bg-neutral-900">
         {text}
       </div>
     </div>

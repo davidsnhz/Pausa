@@ -34,3 +34,15 @@ export function currentWeek(base = new Date()) {
     return { key: dateKey(date), label, num: date.getDate(), date };
   });
 }
+
+// "YYYY-MM-DD" → "Lunes 26 de octubre" (para títulos).
+export function longDate(key) {
+  const DAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+  const MONTHS = [
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+  ];
+  const [y, m, d] = key.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  return `${DAYS[date.getDay()]} ${d} de ${MONTHS[m - 1]}`;
+}

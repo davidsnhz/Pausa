@@ -219,12 +219,13 @@ export default function Profile() {
         </header>
 
         <div className="mb-7 flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-neutral-100 text-2xl font-bold dark:bg-neutral-900">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-2xl font-bold dark:bg-neutral-900">
             {inicial}
           </div>
-          <div>
-            <h2 className="text-xl font-bold capitalize tracking-[-0.5px]">{nombre}</h2>
-            <p className="text-sm text-neutral-400">{user?.email}</p>
+          {/* min-w-0 + truncate: un nombre o correo muy largo no se sale de la pantalla. */}
+          <div className="min-w-0">
+            <h2 className="truncate text-xl font-bold capitalize tracking-[-0.5px]">{nombre}</h2>
+            <p className="truncate text-sm text-neutral-400">{user?.email}</p>
           </div>
         </div>
 

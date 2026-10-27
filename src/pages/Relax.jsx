@@ -3,6 +3,7 @@
 // 5/6. Relax con 3 tabs. CON navbar.
 //  (a) Sonidos: los 8 exactos, reproducción REAL en loop desde
 //      /public/sounds/{id}.mp3 (un solo sonido a la vez), con temporizador.
+//      Los que aún no tienen archivo aparecen como "Próximamente".
 //  (b) Respiración: mascota grande meditando + "Inhala"/"Exhala" cada 4s. El
 //      sonido sigue sonando al cambiar de tab y también se puede elegir aquí.
 //  (c) Ejercicios: tarjetas informativas.
@@ -19,9 +20,10 @@ import Mascot from "../components/Mascot";
 import Page from "../components/Page";
 import BottomSheet from "../components/BottomSheet";
 import { useEnterOnce } from "../hooks/useEnterOnce";
+import AVAILABLE_SOUNDS from "virtual:pausa-sounds"; // .mp3 presentes en public/sounds
 
 // Los 8 sonidos EXACTOS. id = nombre del archivo en /public/sounds/{id}.mp3
-const SOUNDS = [
+const ALL_SOUNDS = [
   { id: "ruido-marron", name: "Ruido marrón", Icon: AudioWaveform },
   { id: "ruido-blanco", name: "Ruido blanco", Icon: Wind },
   { id: "playa", name: "Playa", Icon: WavesHorizontal },
@@ -30,6 +32,12 @@ const SOUNDS = [
   { id: "lluvia-tejado", name: "Lluvia en el tejado", Icon: CloudRainWind },
   { id: "bosque", name: "Bosque", Icon: Trees },
   { id: "fogata", name: "Fuego de fogata", Icon: Flame },
+];
+
+// Primero los que ya tienen audio; los demás salen como "Próximamente".
+const SOUNDS = [
+  ...ALL_SOUNDS.filter((s) => AVAILABLE_SOUNDS.includes(s.id)),
+  ...ALL_SOUNDS.filter((s) => !AVAILABLE_SOUNDS.includes(s.id)).map((s) => ({ ...s, soon: true })),
 ];
 
 const TABS = ["Sonidos", "Respiración", "Ejercicios"];
@@ -80,11 +88,16 @@ function useAmbient() {
   const [unavailable, setUnavailable] = useState([]); // ids cuyo mp3 no carga
   const [timer, setTimerMinutes] = useState(null); // minutos elegidos (null = sin límite)
   const [endsAt, setEndsAt] = useState(null); // cuándo se apaga (ms) si hay temporizador
-  const [, setTick] = useState(0); // refresca la cuenta atrás
+  const [now, setNow] = useState(() => Date.now()); // reloj de la cuenta atrás
   const audioRef = useRef(null);
   const fadeRef = useRef(null);
-  const timerRef = useRef(timer);
-  timerRef.current = timer;
+
+  // Programa el apagado (o lo quita) y pone el reloj en hora a la vez, para
+  // que el "Quedan X min" salga bien desde el primer momento.
+  const scheduleEnd = useCallback((at) => {
+    setEndsAt(at);
+    setNow(Date.now());
+  }, []);
 
   const stop = useCallback(() => {
     clearInterval(fadeRef.current);
@@ -98,11 +111,12 @@ function useAmbient() {
   // Al salir de Relax, parar cualquier audio.
   useEffect(() => stop, [stop]);
 
+  // Devuelve una promesa que dice si el sonido ha llegado a sonar.
   function toggle(sound) {
     // Si ya suena (o está cargando) este, parar.
     if (playingId === sound.id || loadingId === sound.id) {
       stop();
-      return;
+      return Promise.resolve(false);
     }
     // Cambiar de sonido no reinicia el temporizador que ya corre.
     clearInterval(fadeRef.current);
@@ -113,28 +127,31 @@ function useAmbient() {
     setPlayingId(null);
     setLoadingId(sound.id);
     // Solo se marca como "sonando" cuando de verdad empieza a sonar.
-    audio
+    return audio
       .play()
       .then(() => {
-        if (audioRef.current !== audio) return; // se pulsó otro mientras cargaba
+        if (audioRef.current !== audio) return false; // se pulsó otro mientras cargaba
         setLoadingId(null);
         setPlayingId(sound.id);
-        setEndsAt((e) => e ?? (timerRef.current ? Date.now() + timerRef.current * 60000 : null));
+        // Si había temporizador elegido y aún no corría, empieza ahora.
+        if (timer && !endsAt) scheduleEnd(Date.now() + timer * 60000);
+        return true;
       })
       .catch(() => {
-        if (audioRef.current !== audio) return;
-        // El mp3 aún no existe o no se puede reproducir (ver public/sounds/README.md).
+        if (audioRef.current !== audio) return false;
+        // El mp3 no se puede reproducir (sin conexión, formato no válido…).
         audioRef.current = null;
         setLoadingId(null);
         setEndsAt(null);
         setUnavailable((u) => (u.includes(sound.id) ? u : [...u, sound.id]));
+        return false;
       });
   }
 
   // Elegir temporizador: si ya suena algo, empieza a contar desde ahora.
   function setTimer(minutes) {
     setTimerMinutes(minutes);
-    setEndsAt(minutes && audioRef.current ? Date.now() + minutes * 60000 : null);
+    scheduleEnd(minutes && audioRef.current ? Date.now() + minutes * 60000 : null);
   }
 
   // Cuenta atrás. Al llegar a cero baja el volumen poco a poco (donde el
@@ -142,10 +159,8 @@ function useAmbient() {
   useEffect(() => {
     if (!endsAt) return;
     const id = setInterval(() => {
-      if (Date.now() < endsAt) {
-        setTick((t) => t + 1);
-        return;
-      }
+      setNow(Date.now());
+      if (Date.now() < endsAt) return;
       clearInterval(id);
       setTimerMinutes(null);
       const audio = audioRef.current;
@@ -164,7 +179,7 @@ function useAmbient() {
     return () => clearInterval(id);
   }, [endsAt, stop]);
 
-  const remaining = endsAt ? Math.max(0, endsAt - Date.now()) : null;
+  const remaining = endsAt ? Math.max(0, endsAt - now) : null;
   return { playingId, loadingId, unavailable, toggle, stop, timer, setTimer, remaining };
 }
 
@@ -204,7 +219,8 @@ function SoundButton({ sound, ambient, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center gap-4 rounded-[20px] p-3.5 transition-[transform,background,border] active:scale-[0.98] ${
+      disabled={sound.soon}
+      className={`flex w-full items-center gap-4 rounded-[20px] p-3.5 transition-[transform,background,border] active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 ${
         playing
           ? "border border-neutral-200 bg-white shadow-xs dark:border-neutral-700 dark:bg-neutral-900"
           : "bg-neutral-100 dark:bg-neutral-900/60"
@@ -218,7 +234,9 @@ function SoundButton({ sound, ambient, onClick }) {
         <Icon size={20} />
       </span>
       <span className="flex-1 text-left text-sm font-semibold">{sound.name}</span>
-      {playing ? (
+      {sound.soon ? (
+        <span className="text-xs font-medium text-neutral-400">Próximamente</span>
+      ) : playing ? (
         <Equalizer />
       ) : ambient.loadingId === sound.id ? (
         <LoaderCircle size={18} className="animate-spin text-neutral-400" />
@@ -298,7 +316,6 @@ function BreathingTab({ ambient }) {
   const [i, setI] = useState(0);
   const phase = BREATH_CYCLE[i];
   const [picker, setPicker] = useState(false); // hoja para elegir sonido
-  const [chosenId, setChosenId] = useState(null); // elegido en la hoja
 
   useEffect(() => {
     // Cada fase dura lo suyo; al terminar, pasa a la siguiente (en bucle).
@@ -306,22 +323,14 @@ function BreathingTab({ ambient }) {
     return () => clearTimeout(t);
   }, [i, phase.secs]);
 
-  // La hoja se cierra cuando el sonido elegido empieza a sonar (si no está
-  // disponible, sigue abierta mostrando "No disponible").
-  useEffect(() => {
-    if (chosenId && ambient.playingId === chosenId) {
-      setPicker(false);
-      setChosenId(null);
-    }
-  }, [chosenId, ambient.playingId]);
-
-  function choose(sound) {
+  // La hoja se cierra cuando el sonido elegido empieza a sonar (si falla,
+  // sigue abierta mostrando "No disponible").
+  async function choose(sound) {
     if (ambient.playingId === sound.id) {
       setPicker(false);
       return;
     }
-    setChosenId(sound.id);
-    ambient.toggle(sound);
+    if (await ambient.toggle(sound)) setPicker(false);
   }
 
   // my-auto centra en vertical, y si no cabe (pantallas bajas) se puede hacer

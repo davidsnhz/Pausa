@@ -2,6 +2,8 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { createRequire } from "module";
+import fs from "node:fs";
+import path from "node:path";
 
 // Los plugins de Capacitor se cargan con dynamic import en services/native.js
 // (envueltos en try/catch para funcionar como web pura). Mientras NO estén
@@ -65,8 +67,30 @@ function re2jsStub() {
   };
 }
 
+// `virtual:pausa-sounds`: ids de los .mp3 que hay en public/sounds. Relax
+// muestra el resto como "Próximamente" sin intentar cargarlos. Basta con añadir
+// el archivo (en desarrollo, reiniciando el servidor).
+function availableSounds() {
+  const ID = "virtual:pausa-sounds";
+  const RESOLVED = "\0" + ID;
+  return {
+    name: "pausa-available-sounds",
+    resolveId(id) {
+      return id === ID ? RESOLVED : null;
+    },
+    load(id) {
+      if (id !== RESOLVED) return null;
+      const dir = path.resolve("public/sounds");
+      const ids = fs.existsSync(dir)
+        ? fs.readdirSync(dir).filter((f) => f.endsWith(".mp3")).map((f) => f.slice(0, -4))
+        : [];
+      return `export default ${JSON.stringify(ids)};`;
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [capacitorStubWhenAbsent(), re2jsStub(), react(), tailwindcss()],
+  plugins: [capacitorStubWhenAbsent(), re2jsStub(), availableSounds(), react(), tailwindcss()],
   server: {
     host: true,
     port: 5173,

@@ -34,11 +34,10 @@ export const isFirebaseConfigured =
   !import.meta.env.VITE_FIREBASE_API_KEY.startsWith("PEGA_AQUI");
 
 if (!isFirebaseConfigured) {
-  // eslint-disable-next-line no-console
   console.warn(
     "[Pausa] Firebase no está configurado todavía. Rellena .env con tus " +
       "credenciales (ver .env.example). La UI arranca, pero el login y los " +
-      "datos no funcionarán hasta configurarlo (Fase 2)."
+      "datos no funcionarán hasta configurarlo."
   );
 }
 

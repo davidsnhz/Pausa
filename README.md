@@ -22,6 +22,13 @@ npm run dev
 
 Abre http://localhost:5173
 
+### Comprobaciones
+
+```bash
+npm run lint   # ESLint (reglas de React y de los hooks)
+npm test       # pruebas de la lógica: racha, fechas, resumen mensual, respuestas del chat
+```
+
 ### Configurar Firebase
 
 1. Crea un proyecto en https://console.firebase.google.com
@@ -61,10 +68,10 @@ personalizarlo en Authentication → Templates.
 
 ### Sonidos ambientales
 
-Coloca 8 archivos `.mp3` en `public/sounds/` con los nombres exactos que indica
-[`public/sounds/README.md`](public/sounds/README.md). Sin ellos, la pantalla de
-Relax funciona pero no suena nada. Fuentes libres: Pixabay, Freesound (CC0),
-Mixkit.
+Los 8 sonidos son archivos `.mp3` en `public/sounds/` con los nombres exactos que
+indica [`public/sounds/README.md`](public/sounds/README.md). Ya están el ruido
+marrón y el blanco; los que falten aparecen en Relax como "Próximamente".
+Fuentes libres: Pixabay, Freesound (CC0), Mixkit.
 
 ### Chat con IA (opcional)
 

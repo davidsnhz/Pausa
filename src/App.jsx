@@ -124,6 +124,15 @@ export default function App() {
               </Protected>
             }
           />
+          {/* Conversación de un día anterior (solo lectura) */}
+          <Route
+            path="/chat/:fecha"
+            element={
+              <Protected user={user} loading={loading}>
+                <Chat />
+              </Protected>
+            }
+          />
           <Route
             path="/relax"
             element={

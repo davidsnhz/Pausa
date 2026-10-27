@@ -2,8 +2,9 @@
 // ----------------------------------------------------------------------------
 // 3. Dashboard: racha (fuego), saludo dinámico por hora, botón a Perfil,
 // calendario semanal con un punto en los días con check-in (ánimo o chat; día
-// pasado → BottomSheet con el resumen, ya precargado en DataContext) y CTA
-// grande oscura con mascota que lleva al Chat. CON navbar.
+// pasado → BottomSheet con el resumen, ya precargado en DataContext, y botón
+// para releer la conversación) y CTA grande oscura con mascota que lleva al
+// Chat. CON navbar.
 // ----------------------------------------------------------------------------
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -142,6 +143,20 @@ export default function Dashboard() {
                   ? "Aún no has reflexionado hoy. Cuando quieras, empieza tu check-in."
                   : "No reflexionaste este día. Cada pausa cuenta, sin presión."}
               </p>
+            )}
+            {/* Hoy: ir al chat. Días anteriores con conversación: releerla. */}
+            {weekChats !== null && (sheetDay.key === todayKey || sheetChat) && (
+              <button
+                onClick={() => navigate(sheetDay.key === todayKey ? "/chat" : `/chat/${sheetDay.key}`)}
+                className="mt-5 flex w-full items-center justify-center gap-1.5 rounded-full bg-neutral-100 py-3.5 text-[15px] font-bold transition-transform active:scale-[0.98] dark:bg-neutral-800"
+              >
+                {sheetDay.key !== todayKey
+                  ? "Leer conversación"
+                  : sheetChat
+                    ? "Seguir conversación"
+                    : "Empezar check-in"}
+                <ChevronRight size={18} strokeWidth={2.5} />
+              </button>
             )}
           </div>
         )}

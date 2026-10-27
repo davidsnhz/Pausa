@@ -16,8 +16,9 @@ const AuthContext = createContext({ user: null, loading: true, profile: null });
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
-  const [profile, setProfile] = useState(null);
-  const [profileUid, setProfileUid] = useState(null); // de quién es `profile`
+  // Perfil junto a la cuenta a la que pertenece: si cambia la sesión, el de la
+  // anterior deja de valer al instante, sin tener que vaciarlo a mano.
+  const [loaded, setLoaded] = useState({ uid: null, profile: null });
 
   useEffect(() => {
     // onAuthStateChanged dispara al arrancar (con user o null) y en cada cambio.
@@ -29,28 +30,19 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Suscripción al documento del usuario (nombre, racha…) en tiempo real.
+  const uid = user?.uid;
   useEffect(() => {
-    if (!user) {
-      setProfile(null);
-      setProfileUid(null);
-      return;
-    }
-    const uid = user.uid;
-    const unsub = onSnapshot(
+    if (!uid) return;
+    return onSnapshot(
       doc(db, "users", uid),
-      (snap) => {
-        setProfile(snap.exists() ? snap.data() : {});
-        setProfileUid(uid);
-      },
-      () => {
-        setProfile({});
-        setProfileUid(uid);
-      }
+      (snap) => setLoaded({ uid, profile: snap.exists() ? snap.data() : {} }),
+      () => setLoaded({ uid, profile: {} })
     );
-    return unsub;
-  }, [user]);
+  }, [uid]);
 
-  const loading = !authReady || (!!user && profileUid !== user.uid);
+  const profileReady = !!uid && loaded.uid === uid;
+  const profile = profileReady ? loaded.profile : null;
+  const loading = !authReady || (!!uid && !profileReady);
 
   return (
     <AuthContext.Provider value={{ user, loading, profile }}>

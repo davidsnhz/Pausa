@@ -28,37 +28,44 @@ function toMap(snap, pick) {
 
 export function DataProvider({ children }) {
   const { user } = useAuth();
+  const uid = user?.uid;
   const week = currentWeek(useNow());
   const from = week[0].key;
   const to = week[6].key;
 
-  const [moods, setMoods] = useState(null);
-  const [weekChats, setWeekChats] = useState(null);
+  // Cada lectura va con la clave de lo que se pidió (cuenta y semana): si
+  // cambia la sesión o la semana, la anterior deja de valer al instante.
+  const [moodsRead, setMoodsRead] = useState({ key: null, data: null });
+  const [chatsRead, setChatsRead] = useState({ key: null, data: null });
+  const moodsKey = uid || null;
+  const chatsKey = uid ? `${uid}|${from}|${to}` : null;
 
   useEffect(() => {
-    setMoods(null);
-    if (!user) return;
+    if (!uid) return;
     return onSnapshot(
-      collection(db, "users", user.uid, "moods"),
-      (snap) => setMoods(toMap(snap, (d) => d.emoji)),
-      () => setMoods({})
+      collection(db, "users", uid, "moods"),
+      (snap) => setMoodsRead({ key: uid, data: toMap(snap, (d) => d.emoji) }),
+      () => setMoodsRead({ key: uid, data: {} })
     );
-  }, [user]);
+  }, [uid]);
 
   useEffect(() => {
-    setWeekChats(null);
-    if (!user) return;
+    if (!uid) return;
+    const key = `${uid}|${from}|${to}`;
     const q = query(
-      collection(db, "users", user.uid, "chats"),
+      collection(db, "users", uid, "chats"),
       where(documentId(), ">=", from),
       where(documentId(), "<=", to)
     );
     return onSnapshot(
       q,
-      (snap) => setWeekChats(toMap(snap, (d) => d)),
-      () => setWeekChats({})
+      (snap) => setChatsRead({ key, data: toMap(snap, (d) => d) }),
+      () => setChatsRead({ key, data: {} })
     );
-  }, [user, from, to]);
+  }, [uid, from, to]);
+
+  const moods = moodsKey && moodsRead.key === moodsKey ? moodsRead.data : null;
+  const weekChats = chatsKey && chatsRead.key === chatsKey ? chatsRead.data : null;
 
   const value = useMemo(() => ({ moods, weekChats }), [moods, weekChats]);
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
