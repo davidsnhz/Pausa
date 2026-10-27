@@ -131,5 +131,5 @@ src/
 ├── hooks/       useNow (fecha al volver a la app), useGoBack (volver seguro),
 │                useEnterOnce (animaciones de entrada solo la primera vez)
 ├── services/    firebase, ai, native, streak, account, theme
-└── utils/       date (dateKey, greeting, currentWeek)
+└── utils/       date (dateKey, greeting, currentWeek), mood (escala y resumen mensual), legal
 ```

@@ -1,8 +1,9 @@
 // pages/Dashboard.jsx
 // ----------------------------------------------------------------------------
 // 3. Dashboard: racha (fuego), saludo dinámico por hora, botón a Perfil,
-// calendario semanal (día pasado → BottomSheet con el resumen, ya precargado en
-// DataContext) y CTA grande oscura con mascota que lleva al Chat. CON navbar.
+// calendario semanal con un punto en los días con check-in (ánimo o chat; día
+// pasado → BottomSheet con el resumen, ya precargado en DataContext) y CTA
+// grande oscura con mascota que lleva al Chat. CON navbar.
 // ----------------------------------------------------------------------------
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -22,7 +23,7 @@ import BottomSheet from "../components/BottomSheet";
 
 export default function Dashboard() {
   const { user, profile } = useAuth();
-  const { weekChats } = useData();
+  const { moods, weekChats } = useData();
   const navigate = useNavigate();
   const animateIn = useEnterOnce("dashboard");
   const nombre = displayNameOf(user, profile);
@@ -37,6 +38,7 @@ export default function Dashboard() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const sheetChat = sheetDay ? weekChats?.[sheetDay.key] : null;
   const sheetSummary = sheetChat?.summary || sheetChat?.lastMessage || null;
+  const sheetMood = sheetDay ? moods?.[sheetDay.key] : null;
 
   // Al tocar un día (hoy o anterior): abre la hoja con el resumen de ese chat.
   function openDay(day) {
@@ -69,12 +71,14 @@ export default function Dashboard() {
           {week.map((d) => {
             const isToday = d.key === todayKey;
             const isFuture = d.key > todayKey;
+            // Mismo criterio que la racha: registró su ánimo o escribió en el chat.
+            const checkedIn = !!(moods?.[d.key] || weekChats?.[d.key]);
             return (
               <button
                 key={d.key}
                 onClick={() => openDay(d)}
                 disabled={isFuture}
-                className={`flex w-10 flex-col items-center gap-2 rounded-xl px-2 py-3 transition-transform active:scale-95 ${
+                className={`relative flex w-10 flex-col items-center gap-2 rounded-xl px-2 py-3 transition-transform active:scale-95 ${
                   isToday ? "border border-neutral-200 shadow-xs dark:border-neutral-800" : ""
                 } ${isFuture ? "cursor-default" : ""}`}
               >
@@ -84,6 +88,12 @@ export default function Dashboard() {
                 <span className={`text-[15px] font-bold ${isToday ? "" : "text-neutral-400"}`}>
                   {d.num}
                 </span>
+                {/* En el hueco del padding inferior: no cambia el alto del día. */}
+                <span
+                  className={`absolute bottom-1.5 h-1 w-1 rounded-full bg-black transition-opacity duration-300 dark:bg-white ${
+                    checkedIn ? "opacity-100" : "opacity-0"
+                  }`}
+                />
               </button>
             );
           })}
@@ -116,8 +126,9 @@ export default function Dashboard() {
       <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)}>
         {sheetDay && (
           <div>
-            <h3 className="mb-1 text-xl font-bold tracking-[-0.5px]">
+            <h3 className="mb-1 flex items-center gap-2 text-xl font-bold tracking-[-0.5px]">
               {sheetDay.label} {sheetDay.num}
+              {sheetMood && <span className="text-lg leading-none">{sheetMood}</span>}
             </h3>
             {weekChats === null ? (
               <p className="text-sm text-neutral-400">Cargando…</p>
