@@ -15,7 +15,7 @@ export default function BottomSheet({ open, onClose, children }) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" onClick={onClose} />
           <motion.div
             className="pb-safe-6 relative w-full rounded-t-[32px] bg-white px-6 pt-3 dark:bg-neutral-900"
             initial={{ y: "100%" }}

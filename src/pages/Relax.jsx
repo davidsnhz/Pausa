@@ -9,8 +9,8 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  AudioWaveform, Wind, Waves, Droplets, CloudRain, CloudRainWind,
-  Trees, Flame, Play, Loader2,
+  AudioWaveform, Wind, WavesHorizontal, Droplets, CloudRain, CloudRainWind,
+  Trees, Flame, Play, LoaderCircle,
 } from "lucide-react";
 
 import Mascot from "../components/Mascot";
@@ -21,7 +21,7 @@ import { useEnterOnce } from "../hooks/useEnterOnce";
 const SOUNDS = [
   { id: "ruido-marron", name: "Ruido marrón", Icon: AudioWaveform },
   { id: "ruido-blanco", name: "Ruido blanco", Icon: Wind },
-  { id: "playa", name: "Playa", Icon: Waves },
+  { id: "playa", name: "Playa", Icon: WavesHorizontal },
   { id: "arroyo", name: "Arroyo", Icon: Droplets },
   { id: "lluvia-suave", name: "Lluvia suave", Icon: CloudRain },
   { id: "lluvia-tejado", name: "Lluvia en el tejado", Icon: CloudRainWind },
@@ -49,7 +49,7 @@ export default function Relax() {
               {tab === t && (
                 <motion.span
                   layoutId="relaxTab"
-                  className="absolute -bottom-[13px] left-0 right-0 h-0.5 bg-black dark:bg-white"
+                  className="absolute bottom-[-13px] left-0 right-0 h-0.5 bg-black dark:bg-white"
                   transition={{ type: "spring", stiffness: 400, damping: 32 }}
                 />
               )}
@@ -131,7 +131,7 @@ function SoundsTab() {
             transition={{ duration: 0.28, delay: i * 0.04, ease: "easeOut" }}
             className={`flex w-full items-center gap-4 rounded-[20px] p-3.5 transition-[transform,background,border] active:scale-[0.98] ${
               playing
-                ? "border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900"
+                ? "border border-neutral-200 bg-white shadow-xs dark:border-neutral-700 dark:bg-neutral-900"
                 : "bg-neutral-100 dark:bg-neutral-900/60"
             }`}
           >
@@ -148,7 +148,7 @@ function SoundsTab() {
             {playing ? (
               <Equalizer />
             ) : loadingId === sound.id ? (
-              <Loader2 size={18} className="animate-spin text-neutral-400" />
+              <LoaderCircle size={18} className="animate-spin text-neutral-400" />
             ) : unavailable.includes(sound.id) ? (
               <span className="text-xs font-medium text-neutral-400">No disponible</span>
             ) : (

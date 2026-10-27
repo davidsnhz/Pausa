@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import { createRequire } from "module";
 
 // Los plugins de Capacitor se cargan con dynamic import en services/native.js
@@ -45,24 +46,43 @@ function capacitorStubWhenAbsent() {
   };
 }
 
+// Firestore (v12+) incluye re2js (~60 KB comprimidos) solo para evaluar en el
+// cliente las consultas "pipeline" con LIKE / regex, que Pausa no usa. Se
+// sustituye por un módulo que lanza error: Firestore lo captura y esa función
+// devolvería "error". Si algún día se usan pipelines con regex, quitar esto.
+function re2jsStub() {
+  const STUB_ID = "\0pausa:re2js-stub";
+  return {
+    name: "pausa-re2js-stub",
+    enforce: "pre",
+    resolveId(id) {
+      return id === "re2js" ? STUB_ID : null;
+    },
+    load(id) {
+      if (id !== STUB_ID) return null;
+      return 'export const RE2JS = { compile() { throw new Error("re2js no incluido en Pausa"); } };';
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [capacitorStubWhenAbsent(), react()],
+  plugins: [capacitorStubWhenAbsent(), re2jsStub(), react(), tailwindcss()],
   server: {
     host: true,
     port: 5173,
   },
   build: {
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         // Separa las librerías grandes en trozos propios: se cachean aparte y
         // no se vuelven a descargar en cada despliegue si no cambian.
-        manualChunks(id) {
-          if (!id.includes("node_modules")) return undefined;
-          if (id.includes("firebase") || id.includes("@firebase")) return "firebase";
-          if (id.includes("framer-motion") || id.includes("popmotion") || id.includes("@motionone"))
-            return "framer";
-          if (id.includes("react")) return "react";
-          return "vendor";
+        codeSplitting: {
+          groups: [
+            { name: "firebase", test: /node_modules[\\/]@?firebase[\\/]/, priority: 4 },
+            { name: "framer", test: /node_modules[\\/](framer-motion|motion-dom|motion-utils)[\\/]/, priority: 3 },
+            { name: "react", test: /node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/, priority: 2 },
+            { name: "vendor", test: /node_modules[\\/]/, priority: 1 },
+          ],
         },
       },
     },

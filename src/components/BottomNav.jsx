@@ -3,13 +3,13 @@
 // Navbar inferior flotante tipo píldora (Relax / Inicio / Stats).
 // Visible SOLO en Dashboard, Relax y Stats. Respeta la safe-area inferior.
 // ----------------------------------------------------------------------------
-import { useLocation, useNavigate } from "react-router-dom";
-import { Wind, Home, BarChart3 } from "lucide-react";
+import { useLocation, useNavigate } from "react-router";
+import { Wind, House, ChartColumn } from "lucide-react";
 
 const ITEMS = [
   { id: "relax", label: "Relax", Icon: Wind, path: "/relax" },
-  { id: "home", label: "Inicio", Icon: Home, path: "/" },
-  { id: "stats", label: "Stats", Icon: BarChart3, path: "/stats" },
+  { id: "home", label: "Inicio", Icon: House, path: "/" },
+  { id: "stats", label: "Stats", Icon: ChartColumn, path: "/stats" },
 ];
 
 export default function BottomNav() {

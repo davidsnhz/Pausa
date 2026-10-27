@@ -6,7 +6,7 @@
 // ----------------------------------------------------------------------------
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { Flame, User, ChevronRight, MessageCircle } from "lucide-react";
 
 import { useAuth, displayNameOf } from "../context/AuthContext";
@@ -75,7 +75,7 @@ export default function Dashboard() {
                 onClick={() => openDay(d)}
                 disabled={isFuture}
                 className={`flex w-10 flex-col items-center gap-2 rounded-xl px-2 py-3 transition-transform active:scale-95 ${
-                  isToday ? "border border-neutral-200 shadow-sm dark:border-neutral-800" : ""
+                  isToday ? "border border-neutral-200 shadow-xs dark:border-neutral-800" : ""
                 } ${isFuture ? "cursor-default" : ""}`}
               >
                 <span className={`text-[11px] font-semibold ${isToday ? "" : "text-neutral-400"}`}>

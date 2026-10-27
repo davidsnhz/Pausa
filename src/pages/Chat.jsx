@@ -167,7 +167,7 @@ export default function Chat() {
             onChange={(e) => setText(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder="Escribe lo que sientes..."
-            className="flex-1 rounded-full bg-neutral-100 px-5 py-3.5 text-sm outline-none placeholder:text-neutral-400 dark:bg-neutral-900"
+            className="flex-1 rounded-full bg-neutral-100 px-5 py-3.5 text-sm outline-hidden placeholder:text-neutral-400 dark:bg-neutral-900"
           />
           <button
             onClick={send}

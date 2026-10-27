@@ -6,11 +6,11 @@
 // contraseña y borra cuenta + datos). SIN navbar.
 // ----------------------------------------------------------------------------
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { signOut, updateProfile } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import {
-  ArrowLeft, ChevronRight, UserRound, Moon, Shield, FileText, Mail, Download, LogOut, Trash2,
+  ArrowLeft, ChevronRight, UserRound, Moon, Shield, FileText, Mail, Download, LogOut, Trash,
 } from "lucide-react";
 
 import { useAuth, displayNameOf } from "../context/AuthContext";
@@ -256,7 +256,7 @@ export default function Profile() {
             onClick={handleExport}
           />
           <Row Icon={LogOut} label="Cerrar Sesión" onClick={() => setShowLogout(true)} />
-          <Row Icon={Trash2} label="Borrar Cuenta" danger onClick={openDelete} />
+          <Row Icon={Trash} label="Borrar Cuenta" danger onClick={openDelete} />
         </div>
       </div>
 
@@ -308,7 +308,7 @@ export default function Profile() {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSaveName()}
-          className="mb-3 w-full rounded-2xl border border-neutral-200 bg-neutral-100 px-5 py-3.5 text-sm outline-none focus:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-800 dark:focus:border-neutral-600"
+          className="mb-3 w-full rounded-2xl border border-neutral-200 bg-neutral-100 px-5 py-3.5 text-sm outline-hidden focus:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-800 dark:focus:border-neutral-600"
         />
         {nameError && <p className="mb-3 text-sm text-red-500">{nameError}</p>}
         <div className="flex gap-3">
@@ -366,7 +366,7 @@ export default function Profile() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleDelete()}
-          className="mb-3 w-full rounded-2xl border border-neutral-200 bg-neutral-100 px-5 py-3.5 text-sm outline-none dark:border-neutral-800 dark:bg-neutral-800"
+          className="mb-3 w-full rounded-2xl border border-neutral-200 bg-neutral-100 px-5 py-3.5 text-sm outline-hidden dark:border-neutral-800 dark:bg-neutral-800"
         />
         {error && <p className="mb-3 text-sm text-red-500">{error}</p>}
 

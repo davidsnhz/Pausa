@@ -17,7 +17,7 @@ export default function Modal({ open, onClose, children }) {
           exit={{ opacity: 0 }}
         >
           {/* Overlay: toca fuera para cerrar */}
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" onClick={onClose} />
           <motion.div
             className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl dark:bg-neutral-900"
             initial={{ scale: 0.94, opacity: 0, y: 8 }}

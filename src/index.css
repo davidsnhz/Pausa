@@ -1,97 +1,119 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Modo oscuro controlado por la clase `dark` en <html> (toggle en Perfil). */
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  /* Inter para cuerpo, Space Grotesk para títulos. */
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+
+  /* Mismos tonos que en Tailwind 3 (la v4 los hizo más saturados). */
+  --color-neutral-400: #a3a3a3;
+  --color-red-500: #ef4444;
+  --color-green-500: #22c55e;
+}
 
 /* ============================================================
    Base — feel nativo iOS dentro de WKWebView
    ============================================================ */
-/* Controles nativos (scroll, autocompletado…) del mismo tema que la app. */
-:root {
-  color-scheme: light;
-}
-:root.dark {
-  color-scheme: dark;
-}
-:root.dark body {
-  background: #000000;
-}
+@layer base {
+  /* Tailwind 4 pinta los bordes del color del texto si no se indica otro;
+     así un `border` sin color sigue siendo gris claro, como en Tailwind 3. */
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
 
-html,
-body,
-#root {
-  height: 100%;
-}
+  /* Controles nativos (scroll, autocompletado…) del mismo tema que la app. */
+  :root {
+    color-scheme: light;
+  }
+  :root.dark {
+    color-scheme: dark;
+  }
+  :root.dark body {
+    background: #000000;
+  }
 
-body {
-  margin: 0;
-  /* Fondo ya en el body (no solo en React): el primer pintado sale del color
-     correcto, también en modo oscuro. */
-  background: #ffffff;
-  font-family: "Inter", system-ui, sans-serif;
-  /* Sin scroll de rebote/goma en el documento (se ve raro empaquetado). */
-  overscroll-behavior: none;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
 
-/* Sin flash gris al tocar y sin selección de texto accidental (feel nativo). */
-* {
-  -webkit-tap-highlight-color: transparent;
-}
+  body {
+    margin: 0;
+    /* Fondo ya en el body (no solo en React): el primer pintado sale del color
+       correcto, también en modo oscuro. */
+    background: #ffffff;
+    font-family: "Inter", system-ui, sans-serif;
+    /* Sin scroll de rebote/goma en el documento (se ve raro empaquetado). */
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-button,
-a,
-[role="button"] {
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-}
+  /* Sin flash gris al tocar y sin selección de texto accidental (feel nativo). */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
 
-/* Los inputs sí deben permitir selección/escritura. */
-input,
-textarea {
-  -webkit-user-select: auto;
-  user-select: auto;
+  button,
+  a,
+  [role="button"] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Los inputs sí deben permitir selección/escritura. */
+  input,
+  textarea {
+    -webkit-user-select: auto;
+    user-select: auto;
+  }
 }
 
 /* ============================================================
    Safe areas — usar en TODAS las pantallas y en el navbar.
    Fallback a 0px cuando env() no está disponible (navegador web).
    ============================================================ */
-@layer utilities {
-  .pt-safe {
-    padding-top: max(env(safe-area-inset-top), 0px);
-  }
-  .pb-safe {
-    padding-bottom: max(env(safe-area-inset-bottom), 0px);
-  }
-  .pl-safe {
-    padding-left: max(env(safe-area-inset-left), 0px);
-  }
-  .pr-safe {
-    padding-right: max(env(safe-area-inset-right), 0px);
-  }
-  /* Combina un valor propio con el inset seguro (p. ej. cabeceras). */
-  .pt-safe-14 {
-    padding-top: calc(env(safe-area-inset-top) + 3.5rem);
-  }
-  .pb-safe-6 {
-    padding-bottom: calc(env(safe-area-inset-bottom) + 1.5rem);
-  }
-  .pb-safe-24 {
-    padding-bottom: calc(env(safe-area-inset-bottom) + 6rem);
-  }
-  /* Separación del navbar flotante respecto a la barra home. */
-  .bottom-safe-4 {
-    bottom: calc(env(safe-area-inset-bottom) + 1rem);
-  }
+@utility pt-safe {
+  padding-top: max(env(safe-area-inset-top), 0px);
+}
+@utility pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 0px);
+}
+@utility pl-safe {
+  padding-left: max(env(safe-area-inset-left), 0px);
+}
+@utility pr-safe {
+  padding-right: max(env(safe-area-inset-right), 0px);
+}
+/* Combina un valor propio con el inset seguro (p. ej. cabeceras). */
+@utility pt-safe-14 {
+  padding-top: calc(env(safe-area-inset-top) + 3.5rem);
+}
+@utility pb-safe-6 {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 1.5rem);
+}
+@utility pb-safe-24 {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 6rem);
+}
+/* Separación del navbar flotante respecto a la barra home. */
+@utility bottom-safe-4 {
+  bottom: calc(env(safe-area-inset-bottom) + 1rem);
 }
 
 /* Ocultar scrollbars manteniendo el scroll (estética limpia). */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
+@utility no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }

@@ -11,7 +11,7 @@ PWA en React (Vite) con Firebase, pensada para instalarse en el móvil.
 
 ## Requisitos
 
-- Node.js 18+ (probado con 24).
+- Node.js 20.19+ (probado con 24).
 
 ## Puesta en marcha (desarrollo)
 
@@ -42,9 +42,11 @@ las mismas reglas de `firestore.rules`. Requiere **Java 21+**.
 ```bash
 npm run emulators   # terminal 1 — panel en http://localhost:4000
 npm run dev:emu     # terminal 2 — app en http://localhost:5173
+npm run seed:emu    # opcional: cuenta de prueba con dos meses de datos
 ```
 
-Los datos se borran al parar los emuladores.
+Los datos se borran al parar los emuladores. La cuenta de prueba que crea
+`seed:emu` está en [`scripts/seed-emulators.mjs`](scripts/seed-emulators.mjs).
 
 ### Textos legales y consentimiento
 

@@ -40,7 +40,7 @@ function traducirError(code) {
 }
 
 const INPUT =
-  "w-full rounded-2xl border border-neutral-200 bg-neutral-100 px-5 py-4 text-sm outline-none placeholder:text-neutral-400 focus:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-900 dark:focus:border-neutral-600";
+  "w-full rounded-2xl border border-neutral-200 bg-neutral-100 px-5 py-4 text-sm outline-hidden placeholder:text-neutral-400 focus:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-900 dark:focus:border-neutral-600";
 
 export default function Login() {
   const [mode, setMode] = useState("login"); // "login" | "signup"
@@ -155,7 +155,7 @@ export default function Login() {
               {mode === m && (
                 <motion.span
                   layoutId="authPill"
-                  className="absolute inset-0 rounded-full bg-white shadow-sm dark:bg-black"
+                  className="absolute inset-0 rounded-full bg-white shadow-xs dark:bg-black"
                   transition={{ type: "spring", stiffness: 400, damping: 32 }}
                 />
               )}
@@ -274,7 +274,7 @@ export default function Login() {
             value={resetEmail}
             onChange={(e) => setResetEmail(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleReset()}
-            className="mb-3 w-full rounded-2xl border border-neutral-200 bg-neutral-100 px-5 py-3.5 text-sm outline-none focus:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-800 dark:focus:border-neutral-600"
+            className="mb-3 w-full rounded-2xl border border-neutral-200 bg-neutral-100 px-5 py-3.5 text-sm outline-hidden focus:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-800 dark:focus:border-neutral-600"
           />
         )}
         <p className="mb-3 min-h-5 text-sm text-red-500">{resetError}</p>

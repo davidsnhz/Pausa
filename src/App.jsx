@@ -6,7 +6,7 @@
 // no ha aceptado los textos legales vigentes, la pantalla de consentimiento.
 // ----------------------------------------------------------------------------
 import { lazy, Suspense, useEffect } from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router";
 
 import { useAuth } from "./context/AuthContext";
 import { hideSplash, syncStatusBar } from "./services/native";
@@ -20,7 +20,7 @@ import Login from "./pages/Login";
 import Consent from "./pages/Consent";
 import Dashboard from "./pages/Dashboard";
 // El resto se cargan bajo demanda (code-splitting) para acelerar el arranque.
-// Con v7_startTransition activo, la navegación mantiene la pantalla actual
+// React Router navega dentro de startTransition: mantiene la pantalla actual
 // mientras carga el trozo, así que no hay parpadeo al cambiar de sección.
 const LAZY_PAGES = {
   Chat: () => import("./pages/Chat"),

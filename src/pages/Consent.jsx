@@ -6,7 +6,7 @@
 // Los textos se leen en /terms y /privacy, que siguen accesibles desde aquí.
 // ----------------------------------------------------------------------------
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { signOut } from "firebase/auth";
 import { ChevronRight, FileText, Shield } from "lucide-react";
 
