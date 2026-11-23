@@ -337,9 +337,7 @@ function load(key) {
           : "prepare";
       // Marca de "preparando": si la app se cierra ahora, suele ser por memoria.
       if (phase === "prepare" && state.phase !== "prepare") writeStorage(PREPARING_KEY, key);
-      // Preparar llega al 90 %; el calentamiento (ver localAI.host.js) es el resto.
-      const progress = Math.max(0, Math.min(1, report.progress || 0));
-      set({ phase, progress: text === "warmup" ? 0.95 : phase === "prepare" ? progress * 0.9 : progress });
+      set({ phase, progress: Math.max(0, Math.min(1, report.progress || 0)) });
     }, preferred);
     stopIfCancelled();
     writeStorage(PREPARING_KEY, null);

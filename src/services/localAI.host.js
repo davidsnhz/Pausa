@@ -19,10 +19,6 @@ const hasOPFS = () => typeof navigator !== "undefined" && !!navigator.storage?.g
 const isStorageWriteError = (err) =>
   /on 'Cache'|unexpected internal error|too large/i.test(`${err?.name || ""} ${err?.message || ""}`);
 
-// Texto de progreso del calentamiento (services/localAI.js lo reconoce; no lo
-// importa para no meter la librería en la página).
-const WARMUP = "warmup";
-
 // Almacén donde el modelo está descargado entero, o null.
 async function storedIn(id) {
   for (const backend of BACKENDS) {
@@ -69,13 +65,10 @@ export function createHost() {
         engine.setAppConfig(appConfig("opfs"));
         await engine.reload(id);
       }
-      // La primera generación tras cargar compila los programas de la GPU
-      // (medio minuto en un portátil, aunque sea una palabra). Se hace aquí,
-      // dentro de "Preparando", para que no la espere la primera respuesta.
-      // Unos pocos tokens: el primero compila la lectura del mensaje y los
-      // siguientes, la escritura.
-      onProgress({ text: WARMUP, progress: 1 });
-      await engine.chat.completions.create({ messages: [{ role: "user", content: "hola" }], max_tokens: 4 });
+      // Aquí no se "calienta" el modelo con una respuesta de prueba, aunque la
+      // primera respuesta tarde más: esa primera generación reserva ~1 GB más
+      // de memoria gráfica y, justo después de cargar 1 GB de modelo, el
+      // iPhone cierra la app.
     },
 
     // Petición tipo OpenAI. Con stream, onDelta recibe cada trozo de texto.
