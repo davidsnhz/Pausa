@@ -1,11 +1,8 @@
-// context/AuthContext.jsx
-// ----------------------------------------------------------------------------
 // Fuente única de verdad de la sesión. Envuelve la app y expone
 // { user, loading, profile }. `profile` es el documento users/{uid} en tiempo
 // real (streak, displayName…), para que el nombre y la racha estén disponibles
 // y reactivos en toda la app. `loading` sigue activo hasta tener también el
 // perfil: así nunca se pinta un nombre o una racha provisional.
-// ----------------------------------------------------------------------------
 import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";

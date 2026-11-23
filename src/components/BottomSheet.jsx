@@ -1,8 +1,5 @@
-// components/BottomSheet.jsx
-// ----------------------------------------------------------------------------
 // Hoja inferior deslizante (BottomSheet). En el Dashboard, al tocar un día
 // anterior del calendario, muestra el resumen de ese día leído de Firestore.
-// ----------------------------------------------------------------------------
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function BottomSheet({ open, onClose, children }) {

@@ -1,142 +1,98 @@
 # Pausa
 
-Un "botiquín de primeros auxilios emocionales" y diario inteligente: chat de
-reflexión diaria, registro de ánimo, sonidos ambientales y respiración guiada.
-PWA en React (Vite) con Firebase, pensada para instalarse en el móvil.
+Un botiquín de primeros auxilios emocionales y un diario: chat para reflexionar cada día, registro de ánimo, sonidos de fondo y respiración guiada. Es una PWA en React (Vite) con Firebase, pensada para instalarla en el móvil.
 
-> Filosofía "Desinstalación Positiva": la app transmite calma, sin
-> notificaciones agresivas ni patrones de retención. **No es un servicio médico.**
+La idea es que transmita calma: nada de notificaciones pesadas ni trucos para que vuelvas. Y ojo, **no es un servicio médico.**
 
----
+**Pruébala:** https://pausa-chi.vercel.app
 
-## Requisitos
+## Arrancarlo en local
 
-- Node.js 20.19+ (probado con 24).
-
-## Puesta en marcha (desarrollo)
+Hace falta Node 20.19 o más (yo uso la 24).
 
 ```bash
 npm install
 npm run dev
 ```
 
-Abre http://localhost:5173
-
-### Comprobaciones
+Se abre en http://localhost:5173
 
 ```bash
-npm run lint   # ESLint (reglas de React y de los hooks)
-npm test       # pruebas de la lógica: racha, fechas, resumen mensual, respuestas del chat
+npm run lint
+npm test       # racha, fechas, resumen del mes y respuestas del chat
 ```
 
-### Configurar Firebase
+### Firebase
 
-1. Crea un proyecto en https://console.firebase.google.com
-2. Activa **Authentication → Sign-in method → Correo electrónico/contraseña**.
-   (NO actives Google/Apple: la app usa solo email/contraseña a propósito.)
-3. Crea una base de datos **Firestore**.
-4. Copia `.env.example` a `.env` y rellena tus credenciales (Configuración del
-   proyecto → Tus apps → app Web). Reinicia `npm run dev` tras editar `.env`.
-5. Publica las **reglas de seguridad**: Firestore → pestaña Reglas → pega el
-   contenido de [`firestore.rules`](firestore.rules) → Publicar. (O por CLI:
-   `firebase deploy --only firestore:rules`.)
+1. Crear un proyecto en https://console.firebase.google.com
+2. En Authentication activar solo correo y contraseña (Google y Apple no, es a propósito).
+3. Crear una base de datos de Firestore.
+4. Copiar `.env.example` a `.env` y poner las credenciales de la app web. Después hay que reiniciar `npm run dev`.
+5. Subir las reglas de [`firestore.rules`](firestore.rules), desde la consola o con `firebase deploy --only firestore:rules`.
 
-### Probar sin tocar los datos reales (emuladores de Firebase)
+### Emuladores
 
-Auth y Firestore corren en local con un proyecto ficticio (`demo-pausa`), con
-las mismas reglas de `firestore.rules`. Requiere **Java 21+**.
+Para probar sin tocar datos reales uso los emuladores de Auth y Firestore, con un proyecto de mentira (`demo-pausa`) y las mismas reglas. Necesitan Java 21 o más.
 
 ```bash
-npm run emulators   # terminal 1 — panel en http://localhost:4000
-npm run dev:emu     # terminal 2 — app en http://localhost:5173
-npm run seed:emu    # opcional: cuenta de prueba con dos meses de datos
+npm run emulators   # en una terminal (panel en http://localhost:4000)
+npm run dev:emu     # en otra
+npm run seed:emu    # si quieres una cuenta de prueba con dos meses de datos
 ```
 
-Los datos se borran al parar los emuladores. La cuenta de prueba que crea
-`seed:emu` está en [`scripts/seed-emulators.mjs`](scripts/seed-emulators.mjs).
+Al parar los emuladores se borra todo. La cuenta de prueba está en [`scripts/seed-emulators.mjs`](scripts/seed-emulators.mjs).
 
-### Textos legales y consentimiento
+### Textos legales
 
-Privacidad y Términos viven en `src/components/LegalText.jsx`; responsable,
-correo de contacto, edad mínima y versión, en `src/utils/legal.js`. Al crear
-cuenta hay que aceptarlos y se guarda la versión aceptada en `users/{uid}`.
-**Si cambias los textos, sube `LEGAL.version`**: a cada persona se le pedirá
-aceptarlos de nuevo antes de seguir usando la app.
+Privacidad y términos están en `src/components/LegalText.jsx`, y los datos (responsable, correo, edad mínima y versión) en `src/utils/legal.js`. Al registrarse hay que aceptarlos y se guarda qué versión se aceptó en `users/{uid}`.
 
-El correo de "¿Olvidaste tu contraseña?" lo envía Firebase en español; puedes
-personalizarlo en Authentication → Templates.
+Si cambio los textos tengo que subir `LEGAL.version`, así a todo el mundo se le vuelve a pedir que los acepte.
 
-### Sonidos ambientales
+El correo de recuperar contraseña lo manda Firebase en español, y se puede cambiar en Authentication → Templates.
 
-Los 8 sonidos son archivos `.mp3` en `public/sounds/` con los nombres exactos que
-indica [`public/sounds/README.md`](public/sounds/README.md). Ya están el ruido
-marrón y el blanco; los que falten aparecen en Relax como "Próximamente".
-Fuentes libres: Pixabay, Freesound (CC0), Mixkit.
+### Sonidos
 
-### Chat con IA (opcional)
+Son 8 `.mp3` en `public/sounds/`, con los nombres que pone en [`public/sounds/README.md`](public/sounds/README.md). De momento están el ruido marrón y el blanco; los demás salen en Relax como "Próximamente". Los saco de Pixabay, Freesound (CC0) y Mixkit.
 
-Sin configurar nada, el chat responde con frases empáticas de _fallback_. Para
-conectar un modelo real, define `VITE_AI_PROXY_URL` apuntando a un endpoint
-propio (p. ej. una Cloud Function que hable con la API de Anthropic). **La clave
-de la API vive solo en el backend, nunca en el frontend.**
+### Chat con IA
 
----
+Sin configurar nada, el chat contesta con frases preparadas según el tono del mensaje. Para usar un modelo de verdad hay que poner `VITE_AI_PROXY_URL` apuntando a un backend propio (por ejemplo una Cloud Function). La clave de la API va en ese backend, nunca en el frontend.
 
 ## Producción
 
 ```bash
-npm run build      # genera dist/
-npm run preview    # sirve dist/ en local para probar (http://localhost:4173)
+npm run build
+npm run preview    # para probar la build en http://localhost:4173
 ```
 
-### Desplegar en Vercel
+Está desplegada en Vercel (Vite, build `npm run build`, salida `dist`). Cosas a tener en cuenta:
 
-1. Sube el repo a GitHub e impórtalo en https://vercel.com (framework: **Vite**,
-   build `npm run build`, output `dist`). O usa la CLI: `npm i -g vercel && vercel`.
-2. En **Settings → Environment Variables** del proyecto en Vercel, añade las
-   mismas variables de tu `.env` (`VITE_FIREBASE_*`, y `VITE_AI_PROXY_URL` si la
-   usas). Sin esto, la app desplegada no conecta con Firebase.
-3. Deploy. El [`vercel.json`](vercel.json) ya reescribe las rutas para que React
-   Router funcione al recargar (`/stats`, `/profile`, etc.).
-4. En la consola de Firebase, añade el dominio de Vercel en **Authentication →
-   Settings → Dominios autorizados**.
+- Las variables del `.env` (`VITE_FIREBASE_*` y `VITE_AI_PROXY_URL` si se usa) hay que ponerlas también en Vercel, si no la app no conecta con Firebase.
+- [`vercel.json`](vercel.json) reescribe las rutas para que al recargar en `/stats` o `/profile` no dé 404.
+- El dominio de Vercel tiene que estar en los dominios autorizados de Firebase Authentication.
 
-### Instalarla como app en el iPhone (gratis, sin App Store)
+### Instalarla en el iPhone
 
-Con la app desplegada (HTTPS, p. ej. tu URL de Vercel):
-
-1. Ábrela en **Safari** en el iPhone.
-2. Toca **Compartir** (el cuadrado con la flecha) → **Añadir a pantalla de
-   inicio**.
-3. Aparece un icono de Pausa; al abrirlo va a **pantalla completa**, sin barras
-   del navegador, como una app.
-
-Esto es gratis y no necesita cuenta de desarrollador de Apple (los 99 $/año solo
-hacen falta para publicar en la App Store). En Android/escritorio con Chrome
-saldrá directamente el botón "Instalar".
+Abrirla en Safari, Compartir → Añadir a pantalla de inicio. Se abre a pantalla completa como una app y no hace falta pasar por la App Store. En Android o en el ordenador con Chrome sale directamente el botón de instalar.
 
 Los iconos se generan desde la mascota con `node scripts/gen-icons.mjs`.
 
----
+## App nativa para iOS (pendiente)
 
-## App nativa iOS (Capacitor) — pendiente
+El código ya está preparado para Capacitor (`services/native.js` carga los plugins solo si existen), pero para compilarla hace falta un Mac con Xcode:
 
-El empaquetado para la App Store con Capacitor está preparado en el código
-(`services/native.js` con carga dinámica de plugins), pero el build final
-requiere **macOS + Xcode** (`npx cap add ios && npx cap sync && npx cap open ios`).
-Se hará en una fase posterior sobre un Mac.
+```bash
+npx cap add ios && npx cap sync && npx cap open ios
+```
 
----
-
-## Estructura
+## Carpetas
 
 ```
 src/
-├── components/  Mascot, BottomNav, Modal, BottomSheet, Page, ErrorBoundary
-├── pages/       Splash, Login, Dashboard, Chat, Relax, Stats, Profile, Legal
-├── context/     AuthContext (sesión + perfil), DataContext (ánimos y resúmenes precargados)
-├── hooks/       useNow (fecha al volver a la app), useGoBack (volver seguro),
-│                useEnterOnce (animaciones de entrada solo la primera vez)
-├── services/    firebase, ai, native, streak, account, theme
-└── utils/       date (dateKey, greeting, currentWeek), mood (escala y resumen mensual), legal
+  components/  Mascot, BottomNav, Modal, BottomSheet, Page, ErrorBoundary
+  pages/       Splash, Login, Dashboard, Chat, Relax, Stats, Profile, Legal
+  context/     AuthContext (sesión y perfil) y DataContext (ánimos y resúmenes)
+  hooks/       useNow, useGoBack, useEnterOnce
+  services/    firebase, ai, native, streak, account, theme
+  utils/       date, mood, legal
 ```

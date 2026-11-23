@@ -1,10 +1,5 @@
-// pages/Profile.jsx
-// ----------------------------------------------------------------------------
-// 8. Perfil: lista tipo Ajustes de iOS. Email, toggle Modo Oscuro (clase `dark`
-// + localStorage + StatusBar nativa), enlaces legales y contacto, Descargar mis
-// datos (RGPD), Cerrar Sesión y Borrar Cuenta (modal propio que pide la
-// contraseña y borra cuenta + datos). SIN navbar.
-// ----------------------------------------------------------------------------
+// Perfil, estilo ajustes de iOS: modo oscuro, legales, contacto, descargar
+// mis datos, cerrar sesión y borrar cuenta (pide la contraseña antes).
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { signOut, updateProfile } from "firebase/auth";

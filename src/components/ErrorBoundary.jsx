@@ -1,9 +1,6 @@
-// components/ErrorBoundary.jsx
-// ----------------------------------------------------------------------------
 // Red de seguridad: si una pantalla lanza un error en render, en lugar de
 // dejar la app en blanco (WKWebView no muestra nada), enseñamos un mensaje
 // cuidado con opción de reintentar. Se re-monta al cambiar de ruta (key en App).
-// ----------------------------------------------------------------------------
 import { Component } from "react";
 import Mascot from "./Mascot";
 

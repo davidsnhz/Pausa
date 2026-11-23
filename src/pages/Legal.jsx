@@ -1,10 +1,7 @@
-// pages/Legal.jsx
-// ----------------------------------------------------------------------------
 // Legal in-app (requisito de Apple 5.1.1). doc="privacy" | "terms".
 // Los textos viven en components/LegalText.jsx (también se muestran en el
 // registro). Los términos dejan claro que Pausa NO es un servicio médico ni
 // sustituye ayuda profesional, y mencionan la línea 024 (España).
-// ----------------------------------------------------------------------------
 import { ArrowLeft } from "lucide-react";
 import Page from "../components/Page";
 import LegalText, { LEGAL_DOCS } from "../components/LegalText";

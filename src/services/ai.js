@@ -1,13 +1,10 @@
-// services/ai.js
-// ----------------------------------------------------------------------------
 // Adaptador de IA para el chat. Función principal: getAIReply(history).
 //
 // - Si existe VITE_AI_PROXY_URL, se llama a ese endpoint propio (una Cloud
 //   Function de Firebase que a su vez habla con la API de Anthropic). La clave
-//   de la API vive SOLO en el backend, NUNCA en el frontend.
+//   de la API está solo en el backend, nunca en el frontend.
 // - Si no existe, se usa el modo fallback: respuestas empáticas variadas en
 //   español, para que la app sea plenamente funcional sin backend.
-// ----------------------------------------------------------------------------
 
 const PROXY_URL = import.meta.env.VITE_AI_PROXY_URL;
 

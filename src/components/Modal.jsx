@@ -1,9 +1,5 @@
-// components/Modal.jsx
-// ----------------------------------------------------------------------------
-// Modal propio (NUNCA window.confirm/alert/prompt: se ven fuera de lugar en
-// WKWebView). Diálogo centrado con overlay, animado con Framer Motion.
-// Se usa para confirmaciones (cerrar sesión, borrar cuenta, etc.).
-// ----------------------------------------------------------------------------
+// Modal propio para confirmar cosas (cerrar sesión, borrar cuenta...).
+// window.confirm en WKWebView queda fatal, por eso no lo uso.
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function Modal({ open, onClose, children }) {

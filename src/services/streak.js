@@ -1,12 +1,9 @@
-// services/streak.js
-// ----------------------------------------------------------------------------
 // Lógica de la racha (streak). Se "toca" una vez al día cuando el usuario hace
 // su check-in diario (envía un mensaje en el chat):
 //   - Si ya se contó hoy → no cambia.
 //   - Si el último check-in fue AYER → racha + 1.
 //   - Si hubo un hueco (o es el primero) → racha = 1.
 // Guarda `lastCheckIn` (YYYY-MM-DD) para poder calcularlo.
-// ----------------------------------------------------------------------------
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "./firebase";
 import { dateKey } from "../utils/date";

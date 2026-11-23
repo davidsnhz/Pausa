@@ -1,16 +1,7 @@
-// pages/Stats.jsx
-// ----------------------------------------------------------------------------
-// 7. Stats: selector "¿Cómo te sientes hoy?" con 5 emojis; al pulsar se guarda
-// en Firestore y la sección hace fade-out dejando "Registro completado" (con
-// opción de cambiarlo durante el día).
-// Calendario mensual de 7 columnas con flechas (o deslizando) para ver meses
-// anteriores; día registrado = círculo negro. Al tocar un día registrado: flip
-// 3D (rotateY) que revela el emoji, se mantiene 3 s y vuelve. Debajo, el
-// resumen del mes: días registrados, ánimo medio, reparto y comparación con el
-// mes anterior.
-// Los ánimos llegan ya cargados desde DataContext: al entrar se pinta el estado
-// real directamente, sin mostrar el selector un instante.
-// ----------------------------------------------------------------------------
+// Stats: arriba el "¿Cómo te sientes hoy?" (se puede cambiar durante el día),
+// debajo el calendario del mes y el resumen comparado con el mes anterior.
+// Al tocar un día registrado la casilla gira y enseña el emoji unos segundos.
+// Los ánimos ya vienen de DataContext, así que no hay parpadeo del selector.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";

@@ -1,10 +1,7 @@
-// App.jsx
-// ----------------------------------------------------------------------------
 // Shell de la app: tema (dark mode), enrutado con transiciones, rutas
 // protegidas por AuthContext y navbar flotante visible solo donde toca.
 // Mientras la sesión se resuelve (loading), se muestra el Splash; si la cuenta
 // no ha aceptado los textos legales vigentes, la pantalla de consentimiento.
-// ----------------------------------------------------------------------------
 import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router";
 

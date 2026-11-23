@@ -1,10 +1,7 @@
-// pages/Consent.jsx
-// ----------------------------------------------------------------------------
 // Pantalla de consentimiento: aparece cuando la cuenta no ha aceptado la versión
 // vigente de Términos y Privacidad (cuentas anteriores a ellos o tras un cambio
 // de LEGAL.version). Sin aceptar no se puede seguir: o aceptas o cierras sesión.
 // Los textos se leen en /terms y /privacy, que siguen accesibles desde aquí.
-// ----------------------------------------------------------------------------
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { signOut } from "firebase/auth";

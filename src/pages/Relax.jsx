@@ -1,14 +1,8 @@
-// pages/Relax.jsx
-// ----------------------------------------------------------------------------
-// 5/6. Relax con 3 tabs. CON navbar.
-//  (a) Sonidos: los 8 exactos, reproducción REAL en loop desde
-//      /public/sounds/{id}.mp3 (un solo sonido a la vez), con temporizador.
-//      Los que aún no tienen archivo aparecen como "Próximamente".
-//  (b) Respiración: mascota grande meditando + "Inhala"/"Exhala" cada 4s. El
-//      sonido sigue sonando al cambiar de tab y también se puede elegir aquí.
-//  (c) Ejercicios: tarjetas informativas.
-// El sonido vive en Relax (no en cada tab): solo se para al salir de Relax.
-// ----------------------------------------------------------------------------
+// Relax tiene tres pestañas: sonidos, respiración y ejercicios.
+// Solo suena un sonido a la vez (en bucle, desde /public/sounds/{id}.mp3) y los
+// que no tienen archivo todavía salen como "Próximamente".
+// El audio vive aquí y no en cada pestaña, para que siga sonando al cambiar de
+// una a otra. Se para al salir de Relax.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -302,7 +296,7 @@ function Equalizer() {
   );
 }
 
-/* (b) Respiración — ciclo guiado y pausado para relajar de verdad.
+/* (b) Respiración: ciclo guiado y pausado para relajar de verdad.
    Inhala (4s, crecer) → Sostén (4s) → Exhala (6s, encoger) → Sostén (2s).
    Cadencia lenta (~3-4 respiraciones/min), estilo respiración de calma. */
 const BREATH_CYCLE = [

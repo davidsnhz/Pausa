@@ -1,12 +1,4 @@
-// services/firebase.js
-// ----------------------------------------------------------------------------
-// Inicialización de Firebase (Auth + Firestore).
-//
-// Rellena estos valores con los de tu proyecto (Consola de Firebase →
-// Configuración del proyecto → Tus apps → SDK setup and configuration).
-// Puedes ponerlos como variables de entorno en un archivo .env (ver .env.example)
-// o directamente en el objeto de abajo.
-// ----------------------------------------------------------------------------
+// Firebase (Auth + Firestore). La config va en el .env, ver .env.example.
 import { initializeApp } from "firebase/app";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
 import {

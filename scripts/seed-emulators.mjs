@@ -1,12 +1,9 @@
-// scripts/seed-emulators.mjs
-// ----------------------------------------------------------------------------
 // Rellena los emuladores de Firebase (`npm run emulators`) con una cuenta de
 // prueba y datos de ejemplo: ánimos de los últimos dos meses (hoy no, para ver
 // el selector) y algunos días de chat de esta semana. Borra antes todo lo que
 // hubiera en los emuladores. Solo habla con 127.0.0.1: nunca con el Firebase real.
 //
 //   npm run seed:emu      → luego entra en `npm run dev:emu` con la cuenta de abajo
-// ----------------------------------------------------------------------------
 import { LEGAL } from "../src/utils/legal.js";
 
 const PROJECT = "demo-pausa";

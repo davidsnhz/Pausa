@@ -1,5 +1,3 @@
-// services/account.js
-// ----------------------------------------------------------------------------
 // Operaciones sobre la cuenta ligadas al RGPD:
 //  - acceptTerms: deja constancia del consentimiento (versión + fecha).
 //  - exportUserData: derecho de portabilidad, todos los datos en un JSON.
@@ -7,7 +5,6 @@
 //    Orden: reautenticar → borrar datos de Firestore → borrar usuario de Auth.
 //    Si se borrase antes el usuario, las reglas ya no dejarían tocar sus datos
 //    y se quedarían huérfanos para siempre.
-// ----------------------------------------------------------------------------
 import { EmailAuthProvider, deleteUser, reauthenticateWithCredential } from "firebase/auth";
 import {
   clearIndexedDbPersistence,

@@ -27,3 +27,8 @@ yarn-error.log*
 # Capacitor / iOS (se generan con `npx cap add ios`)
 ios/App/Pods
 ios/App/App/public
+
+# local
+.claude/
+PROMPT-CLAUDE-CODE.md
+PausaMockup.jsx

@@ -1,8 +1,4 @@
-// components/BottomNav.jsx
-// ----------------------------------------------------------------------------
-// Navbar inferior flotante tipo píldora (Relax / Inicio / Stats).
-// Visible SOLO en Dashboard, Relax y Stats. Respeta la safe-area inferior.
-// ----------------------------------------------------------------------------
+// Navbar flotante (Relax / Inicio / Stats). Solo sale en esas tres pantallas.
 import { useLocation, useNavigate } from "react-router";
 import { Wind, House, ChartColumn } from "lucide-react";
 

@@ -1,7 +1,4 @@
-// utils/date.js
-// ----------------------------------------------------------------------------
-// Helpers de fecha compartidos por toda la app.
-// ----------------------------------------------------------------------------
+// Utilidades de fechas.
 
 // Clave "YYYY-MM-DD" en hora LOCAL (no UTC), usada como id de doc en Firestore.
 export function dateKey(d = new Date()) {

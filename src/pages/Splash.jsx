@@ -1,9 +1,5 @@
-// pages/Splash.jsx
-// ----------------------------------------------------------------------------
-// 1. Splash: mascota meditando + "Pausa." con fade-in mientras se resuelve la
-// sesión. App decide después si va a Dashboard o Login.
-// `still`: sin fade-in, para cuando continúa a otro Splash ya visible.
-// ----------------------------------------------------------------------------
+// Pantalla de carga mientras se sabe si hay sesión.
+// `still` quita el fade-in para cuando ya había otro splash en pantalla.
 import { motion } from "framer-motion";
 import Mascot from "../components/Mascot";
 

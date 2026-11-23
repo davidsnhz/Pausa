@@ -1,4 +1,3 @@
-// scripts/gen-icons.mjs
 // Genera los iconos PWA a partir de la mascota (SVG → PNG) con sharp.
 // Uso:  node scripts/gen-icons.mjs
 // Salida en public/: icon-192.png, icon-512.png, apple-touch-icon.png, favicon.png

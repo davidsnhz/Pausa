@@ -1,10 +1,7 @@
-// services/theme.js
-// ----------------------------------------------------------------------------
 // Tema claro/oscuro. Sin elección guardada, sigue al del sistema (y sus
 // cambios); el toggle de Perfil guarda la elección en localStorage.
 // Además de la clase `dark` en <html>, sincroniza el theme-color (barra del
 // navegador / PWA) y la StatusBar nativa para que no choquen con la app.
-// ----------------------------------------------------------------------------
 import { syncStatusBar } from "./native";
 
 const systemDark = window.matchMedia("(prefers-color-scheme: dark)");

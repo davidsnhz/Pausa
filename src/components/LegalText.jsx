@@ -1,10 +1,7 @@
-// components/LegalText.jsx
-// ----------------------------------------------------------------------------
 // Textos de Privacidad y Términos (RGPD + guideline 5.1.1 de Apple). Se usan en
 // su página (/privacy, /terms) y en una hoja dentro del registro, para poder
 // leerlos sin perder lo escrito en el formulario. Al cambiarlos, sube
 // LEGAL.version (utils/legal.js): se pedirá aceptarlos de nuevo.
-// ----------------------------------------------------------------------------
 import { LEGAL } from "../utils/legal";
 
 const { owner, email, minAge } = LEGAL;

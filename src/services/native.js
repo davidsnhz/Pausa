@@ -1,9 +1,6 @@
-// services/native.js
-// ----------------------------------------------------------------------------
 // Capa fina sobre los plugins de Capacitor. Todo se importa con dynamic import
 // dentro de try/catch para que la app siga funcionando como web pura (sin
 // Capacitor instalado, en el navegador, los métodos son no-ops silenciosos).
-// ----------------------------------------------------------------------------
 
 // ¿Estamos dentro del contenedor nativo de Capacitor?
 export async function isNative() {

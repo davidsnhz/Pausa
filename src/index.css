@@ -14,9 +14,7 @@
   --color-green-500: #22c55e;
 }
 
-/* ============================================================
-   Base — feel nativo iOS dentro de WKWebView
-   ============================================================ */
+/* Base: que se sienta nativo en el WKWebView de iOS */
 @layer base {
   /* Tailwind 4 pinta los bordes del color del texto si no se indica otro;
      así un `border` sin color sigue siendo gris claro, como en Tailwind 3. */
@@ -78,10 +76,8 @@
   }
 }
 
-/* ============================================================
-   Safe areas — usar en TODAS las pantallas y en el navbar.
-   Fallback a 0px cuando env() no está disponible (navegador web).
-   ============================================================ */
+/* Safe areas: usarlas en todas las pantallas y en el navbar.
+   Fallback a 0px cuando env() no está disponible (navegador web). */
 @utility pt-safe {
   padding-top: max(env(safe-area-inset-top), 0px);
 }

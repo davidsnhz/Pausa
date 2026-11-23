@@ -1,12 +1,7 @@
-// pages/Chat.jsx
-// ----------------------------------------------------------------------------
-// 4. Chat "Tu espacio seguro": pantalla completa SIN navbar. Burbujas de
-// usuario oscuras a la derecha, IA claras a la izquierda con mini-mascota
-// "listening". Indicador de escribiendo. Mensajes persistidos en Firestore en
-// tiempo real (onSnapshot). Tras cada respuesta se actualiza el resumen del día
-// (alimenta el Dashboard), así está al día aunque se cierre la app sin "volver".
-// En /chat/AAAA-MM-DD muestra la conversación de un día anterior, solo lectura.
-// ----------------------------------------------------------------------------
+// Chat del día, sin navbar. Los mensajes se guardan en Firestore y después
+// de cada respuesta actualizo el resumen del día para el Dashboard (así no
+// depende de que se pulse "volver").
+// Con /chat/AAAA-MM-DD se abre la conversación de otro día, solo para leer.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   collection,

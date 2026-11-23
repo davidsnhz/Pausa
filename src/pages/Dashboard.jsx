@@ -1,11 +1,6 @@
-// pages/Dashboard.jsx
-// ----------------------------------------------------------------------------
-// 3. Dashboard: racha (fuego), saludo dinámico por hora, botón a Perfil,
-// calendario semanal con un punto en los días con check-in (ánimo o chat; día
-// pasado → BottomSheet con el resumen, ya precargado en DataContext, y botón
-// para releer la conversación) y CTA grande oscura con mascota que lleva al
-// Chat. CON navbar.
-// ----------------------------------------------------------------------------
+// Inicio: racha, saludo según la hora, semana con un punto en los días con
+// check-in y el botón grande para ir al chat.
+// Si tocas un día pasado sale la hoja con su resumen (viene ya de DataContext).
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router";

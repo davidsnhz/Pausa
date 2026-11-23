@@ -1,8 +1,5 @@
-// utils/mood.js
-// ----------------------------------------------------------------------------
 // Escala de ánimo compartida (Stats, Dashboard): 5 emojis de peor a mejor.
 // La puntuación (1-5) solo se usa para medias y tendencias.
-// ----------------------------------------------------------------------------
 export const EMOJIS = ["😢", "😟", "😐", "🙂", "😁"];
 export const MOOD_LABELS = ["Muy mal", "Mal", "Regular", "Bien", "Muy bien"];
 

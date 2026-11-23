@@ -1,4 +1,4 @@
-// sw.js — Service Worker de Pausa (PWA).
+// Service worker de la PWA.
 // Estrategia sencilla y segura para no servir versiones antiguas tras un deploy:
 //  - App shell (navegaciones): network-first con fallback a caché (offline).
 //  - Assets con hash de Vite (/assets/...): cache-first (nunca cambian de nombre).

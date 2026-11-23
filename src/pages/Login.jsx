@@ -1,11 +1,7 @@
-// pages/Login.jsx
-// ----------------------------------------------------------------------------
-// 2. Login / Signup: tabs pill, Firebase Auth email+contraseña, errores
-// traducidos al español. Al autenticar, AuthContext redirige al Dashboard.
-// - Iniciar sesión: "¿Olvidaste tu contraseña?" → enlace de recuperación.
-// - Crear cuenta: hay que aceptar Términos y Privacidad (consentimiento
-//   explícito, RGPD); se guarda la versión aceptada en users/{uid}.
-// ----------------------------------------------------------------------------
+// Login y registro con Firebase Auth (email + contraseña). Los errores de
+// Firebase los traduzco a algo legible.
+// Para crear cuenta hay que aceptar términos y privacidad, y guardo qué versión
+// se aceptó en users/{uid}.
 import { useState } from "react";
 import { motion } from "framer-motion";
 import {

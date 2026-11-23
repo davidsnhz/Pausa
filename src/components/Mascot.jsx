@@ -1,10 +1,5 @@
-// components/Mascot.jsx
-// ----------------------------------------------------------------------------
-// La mascota: logo vivo de la app (persona meditando abstracta).
-// SVG de 3 piezas: cabeza (círculo) + cuerpo (rect) + base (rect).
-// Estados animados con Framer Motion: meditating | greeting | listening | sleeping
-// (definición idéntica a la del mockup de referencia).
-// ----------------------------------------------------------------------------
+// La mascota (y logo): cabeza, cuerpo y base, nada más.
+// Estados: meditating | greeting | listening | sleeping
 import { motion } from "framer-motion";
 
 const MASCOT_ANIM = {

@@ -1,9 +1,6 @@
-// hooks/useGoBack.js
-// ----------------------------------------------------------------------------
 // "Volver" seguro: si hay una pantalla anterior dentro de la app, vuelve a
 // ella; si se entró directamente (enlace, recarga en frío) va a `fallback` en
 // lugar de sacar al usuario de la app.
-// ----------------------------------------------------------------------------
 import { useLocation, useNavigate } from "react-router";
 
 export function useGoBack(fallback = "/") {

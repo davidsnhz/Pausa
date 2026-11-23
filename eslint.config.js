@@ -1,4 +1,4 @@
-// eslint.config.js — `npm run lint`
+// `npm run lint`
 // Reglas recomendadas de JavaScript + las de los hooks de React (incluidas las
 // del React Compiler) + aviso si un módulo de página exporta algo más que
 // componentes (rompe la recarga en caliente de Vite).
