@@ -1,16 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { buildChatMessages, buildSummaryMessages, cleanReply, cleanSummary, LOCAL_SYSTEM_PROMPT } from "./aiText";
+import {
+  buildChatMessages,
+  buildSummaryMessages,
+  cleanReply,
+  cleanSummary,
+  hasSentences,
+  LOCAL_SYSTEM_PROMPT,
+} from "./aiText";
 
 describe("buildChatMessages", () => {
-  it("pone las instrucciones primero y traduce los roles", () => {
+  it("pone las instrucciones primero, sin la bienvenida, y traduce los roles", () => {
     const msgs = buildChatMessages([
-      { role: "ai", text: "Hola, ¿qué tal?" },
-      { role: "user", text: "Bien" },
+      { role: "ai", text: "Hola, Alex. Este es tu espacio." },
+      { role: "user", text: "Estoy cansada" },
+      { role: "ai", text: "Te leo." },
+      { role: "user", text: "Mucho" },
     ]);
     expect(msgs).toEqual([
       { role: "system", content: LOCAL_SYSTEM_PROMPT },
-      { role: "assistant", content: "Hola, ¿qué tal?" },
-      { role: "user", content: "Bien" },
+      { role: "user", content: "Estoy cansada" },
+      { role: "assistant", content: "Te leo." },
+      { role: "user", content: "Mucho" },
     ]);
   });
 
@@ -20,24 +30,22 @@ describe("buildChatMessages", () => {
       { role: "user", text: "Uno" },
       { role: "user", text: "Dos" },
     ]);
-    expect(msgs.slice(1)).toEqual([
-      { role: "assistant", content: "Hola" },
-      { role: "user", content: "Uno\n\nDos" },
-    ]);
+    expect(msgs.slice(1)).toEqual([{ role: "user", content: "Uno\n\nDos" }]);
   });
 
-  it("con una conversación larga se queda con lo más reciente", () => {
-    const history = [];
-    for (let i = 0; i < 60; i++) {
-      history.push({ role: "user", text: `mensaje ${i} `.repeat(40) });
-      history.push({ role: "ai", text: `respuesta ${i} `.repeat(40) });
+  it("solo ve los últimos turnos, con los anteriores recortados", () => {
+    const history = [{ role: "ai", text: "Bienvenida" }];
+    for (let i = 0; i < 20; i++) {
+      history.push({ role: "user", text: `mensaje ${i} `.repeat(100) });
+      history.push({ role: "ai", text: `respuesta ${i}` });
     }
-    history.push({ role: "user", text: "el último" });
-    const msgs = buildChatMessages(history);
-    const chars = msgs.slice(1).reduce((n, m) => n + m.content.length, 0);
-    expect(chars).toBeLessThanOrEqual(2600 * 3);
-    expect(msgs[msgs.length - 1]).toEqual({ role: "user", content: "el último" });
-    expect(msgs.length).toBeLessThan(history.length);
+    const last = "lo último que escribo ".repeat(50).trim();
+    history.push({ role: "user", text: last });
+    const msgs = buildChatMessages(history).slice(1);
+    expect(msgs.length).toBeLessThanOrEqual(5);
+    expect(msgs[0].role).toBe("user");
+    expect(msgs[msgs.length - 1]).toEqual({ role: "user", content: last });
+    for (const m of msgs.slice(0, -1)) expect(m.content.length).toBeLessThanOrEqual(401);
   });
 });
 
@@ -66,10 +74,25 @@ describe("cleanReply", () => {
 
   it("mientras razona no enseña nada", () => {
     expect(cleanReply("<think>La persona dice", { partial: true })).toBe("");
-    expect(cleanReply("Hola <thi", { partial: true })).toBe("Hola");
+    expect(cleanReply("Te leo <thi", { partial: true })).toBe("Te leo");
   });
 
-  it("si se cortó por longitud, acaba en la última frase completa", () => {
+  it("quita el saludo del principio (también mientras se escribe)", () => {
+    expect(cleanReply("Hola, David. Lo que sientes es humano.")).toBe("Lo que sientes es humano.");
+    expect(cleanReply("Hola, David.", { partial: true })).toBe("");
+    expect(cleanReply("Hola.")).toBe("Hola.");
+  });
+
+  it("como mucho tres frases, también mientras se escribe", () => {
+    const text = "Uno. Dos. Tres. Cuatro. Cinco.";
+    expect(cleanReply(text)).toBe("Uno. Dos. Tres.");
+    expect(cleanReply(text, { partial: true })).toBe("Uno. Dos. Tres.");
+    expect(hasSentences("Uno. Dos. Tres")).toBe(false);
+    expect(hasSentences("Uno. Dos. Tres.")).toBe(true);
+    expect(cleanReply("Tengo 3.5 horas libres. Bien.")).toBe("Tengo 3.5 horas libres. Bien.");
+  });
+
+  it("si se cortó, acaba en la última frase completa", () => {
     expect(cleanReply("Te entiendo. Es normal sentirse así. Quizá podrías", { truncated: true })).toBe(
       "Te entiendo. Es normal sentirse así."
     );

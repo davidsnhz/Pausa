@@ -4,15 +4,22 @@
 // Instrucciones del acompañante para un modelo pequeño: cortas y directas.
 export const LOCAL_SYSTEM_PROMPT =
   "Eres el acompañante de Pausa, un diario personal. Respondes siempre en " +
-  "español, con calidez y cercanía, como alguien que sabe escuchar. Primero " +
-  "validas lo que la persona siente; después, si encaja, ofreces una perspectiva " +
-  "amable o una idea sencilla, como respirar despacio o dar un paso pequeño. No " +
-  "termines siempre con una pregunta: a veces basta con acompañar. Escribe dos o " +
-  "tres frases cortas en texto plano, sin listas, sin títulos y sin emojis. Usa " +
-  "un lenguaje que no dé por hecho el género de la persona. No haces " +
-  "diagnósticos ni recomiendas medicamentos, y nunca juzgas. Si la persona habla " +
-  "de hacerse daño, la animas con delicadeza a hablar con alguien de confianza y " +
-  "a llamar al 024 (España), o al 112 si hay peligro inmediato.";
+  "español sencillo y natural, con calidez, como alguien que sabe escuchar. " +
+  "Contesta a lo último que ha escrito la persona. Si cuenta cómo se siente, " +
+  "reconoce lo que siente con tus palabras y, si encaja, ofrece una idea " +
+  "sencilla, como respirar despacio o dar un paso pequeño. Si escribe algo que " +
+  "no va de cómo se siente (una broma, una prueba, algo fuera de lugar), " +
+  "contesta con naturalidad en una frase, sin inventarle emociones. Escribe " +
+  "como mucho tres frases cortas, en texto plano, sin listas ni emojis. No " +
+  "saludes: la conversación ya ha empezado. No repitas frases que ya hayas " +
+  "dicho. No generalices sobre hombres, mujeres ni ningún grupo de personas, y " +
+  "no des por hecho el género de nadie. No haces diagnósticos ni recomiendas " +
+  "medicamentos, y nunca juzgas. Si la persona habla de hacerse daño, la animas " +
+  "con delicadeza a hablar con alguien de confianza y a llamar al 024 (España), " +
+  "o al 112 si hay peligro inmediato.";
+
+// Como mucho, frases por respuesta (los modelos pequeños se enrollan).
+export const MAX_SENTENCES = 3;
 
 const SUMMARY_SYSTEM_PROMPT =
   "Resumes en español lo que una persona escribió en su diario. Contestas solo " +
@@ -21,33 +28,57 @@ const SUMMARY_SYSTEM_PROMPT =
 // El modelo tiene una ventana de 4096 tokens: instrucciones + historial +
 // respuesta. Se estima por caracteres (en español, unos 3 por token).
 const CHARS_PER_TOKEN = 3;
-const HISTORY_TOKENS = 2600;
 const SUMMARY_TOKENS = 2000;
 
+// Un modelo pequeño se pierde con mucho contexto: copia sus respuestas
+// anteriores o sigue con un tema viejo en vez de contestar al último mensaje.
+// Por eso ve poco: los últimos turnos, y los anteriores al último, recortados.
+const HISTORY_MESSAGES = 5;
+const OLDER_MESSAGE_CHARS = 400;
+const LAST_MESSAGE_CHARS = 2000;
+
+const clip = (text, max) => (text.length > max ? text.slice(0, max).trimEnd() + "…" : text);
+
 // Historial del chat ({role: "user"|"ai", text}) → mensajes del modelo.
-// Se quedan los más recientes que caben; dos seguidos del mismo rol (si una
-// respuesta falló) se unen, porque los modelos esperan turnos alternos.
+// La bienvenida no se pasa (el modelo la imitaría saludando en cada respuesta)
+// y dos mensajes seguidos del mismo rol se unen: los modelos esperan turnos
+// alternos.
 export function buildChatMessages(history) {
-  const budget = HISTORY_TOKENS * CHARS_PER_TOKEN;
-  const kept = [];
-  let used = 0;
-  for (let i = history.length - 1; i >= 0; i--) {
-    const text = (history[i].text || "").trim();
-    if (!text) continue;
-    if (used + text.length > budget && kept.length) break;
-    kept.unshift({ role: history[i].role === "user" ? "user" : "assistant", content: text });
-    used += text.length;
+  const turns = [];
+  for (const m of history) {
+    const content = (m.text || "").trim();
+    if (!content) continue;
+    const role = m.role === "user" ? "user" : "assistant";
+    const prev = turns[turns.length - 1];
+    if (prev && prev.role === role) prev.content += "\n\n" + content;
+    else turns.push({ role, content });
   }
-  const merged = [];
-  for (const m of kept) {
-    const prev = merged[merged.length - 1];
-    if (prev && prev.role === m.role) prev.content += "\n\n" + m.content;
-    else merged.push({ ...m });
-  }
-  // La conversación debe empezar tras las instrucciones y acabar en la persona.
-  while (merged.length && merged[merged.length - 1].role !== "user") merged.pop();
-  return [{ role: "system", content: LOCAL_SYSTEM_PROMPT }, ...merged];
+  // Empieza en la persona y acaba en la persona.
+  while (turns.length && turns[0].role !== "user") turns.shift();
+  while (turns.length && turns[turns.length - 1].role !== "user") turns.pop();
+  let recent = turns.slice(-HISTORY_MESSAGES);
+  while (recent.length && recent[0].role !== "user") recent = recent.slice(1);
+  const last = recent.length - 1;
+  const messages = recent.map((m, i) => ({
+    role: m.role,
+    content: clip(m.content, i === last ? LAST_MESSAGE_CHARS : OLDER_MESSAGE_CHARS),
+  }));
+  return [{ role: "system", content: LOCAL_SYSTEM_PROMPT }, ...messages];
 }
+
+// Fin de las primeras `n` frases de un texto, o -1 si aún no tiene tantas.
+function sentenceEnd(text, n) {
+  const re = /[.!?…]+["»”')]*(?=\s|$)/g;
+  let count = 0;
+  let match;
+  while ((match = re.exec(text))) {
+    if (++count === n) return match.index + match[0].length;
+  }
+  return -1;
+}
+
+// ¿Tiene ya `n` frases completas? (para dejar de generar)
+export const hasSentences = (text, n = MAX_SENTENCES) => sentenceEnd(text, n) !== -1;
 
 // Para el resumen solo cuenta lo que escribió la persona.
 export function buildSummaryMessages(history) {
@@ -78,9 +109,11 @@ export function buildSummaryMessages(history) {
 }
 
 // Limpia la respuesta del modelo para mostrarla en una burbuja: sin bloque de
-// razonamiento, sin Markdown ni etiquetas de rol y en un solo párrafo.
+// razonamiento, sin Markdown, etiquetas de rol ni saludo, en un solo párrafo y
+// con MAX_SENTENCES frases como mucho (también mientras se escribe, para que
+// el texto no se recorte de golpe al terminar).
 // `partial`: aún se está escribiendo (se muestra lo que hay hasta ahora).
-// `truncated`: se cortó por longitud; se recorta a la última frase completa.
+// `truncated`: se cortó; se recorta a la última frase completa.
 export function cleanReply(raw, { partial = false, truncated = false } = {}) {
   let t = String(raw || "");
   t = t.replace(/<think>[\s\S]*?<\/think>/g, "");
@@ -96,6 +129,12 @@ export function cleanReply(raw, { partial = false, truncated = false } = {}) {
     .replace(/\s*\n+\s*/g, " ")
     .replace(/\s{2,}/g, " ")
     .trim();
+  // "Hola, David." al empezar: la conversación ya está en marcha. Mientras
+  // solo está el saludo no se enseña (si no, aparecería y se borraría).
+  if (partial && /^(?:hola|buenas)\b[^.!?]{0,40}[.!?]*$/i.test(t)) return "";
+  t = t.replace(/^(?:hola|buenas)\b[^.!?]{0,40}[.!?]+\s+(?=\S)/i, "");
+  const end = sentenceEnd(t, MAX_SENTENCES);
+  if (end !== -1) return t.slice(0, end).trim();
   if (truncated && !partial) {
     const whole = t.match(/^[\s\S]*[.!?…](?=\s|$)/);
     if (whole) t = whole[0].trim();

@@ -12,7 +12,14 @@
 //   IA en este móvil para que se pruebe el modelo ligero.
 // - Si algo falla, devuelve null y el chat responde como siempre.
 import { useSyncExternalStore } from "react";
-import { buildChatMessages, buildSummaryMessages, cleanReply, cleanSummary } from "../utils/aiText";
+import {
+  MAX_SENTENCES,
+  buildChatMessages,
+  buildSummaryMessages,
+  cleanReply,
+  cleanSummary,
+  hasSentences,
+} from "../utils/aiText";
 
 export const LOCAL_MODELS = {
   natural: {
@@ -421,29 +428,38 @@ export async function localReply(history, onPartial) {
   try {
     const host = await getHost();
     let raw = "";
+    let stopped = false;
     const res = await enqueue(() =>
       withTimeout(
         host.chat(
           {
             messages: buildChatMessages(history),
             stream: true,
-            temperature: 0.7,
+            // Sin penalizar la frecuencia: en español castiga "que", "de",
+            // "la"… y el modelo acaba eligiendo palabras raras. Una
+            // penalización suave de repetición basta.
+            temperature: 0.6,
             top_p: 0.9,
-            frequency_penalty: 0.3,
-            max_tokens: 200,
+            repetition_penalty: 1.05,
+            max_tokens: 160,
             ...extraFor(key),
           },
           (delta) => {
             raw += delta;
             const visible = cleanReply(raw, { partial: true });
             if (visible) onPartial?.(visible);
+            // Con las frases que se muestran ya escritas, no sigue generando.
+            if (!stopped && hasSentences(visible, MAX_SENTENCES)) {
+              stopped = true;
+              host.interrupt();
+            }
           }
         ),
         REPLY_TIMEOUT_MS,
         () => host.interrupt()
       )
     );
-    return cleanReply(res.content, { truncated: res.finish === "length" }) || null;
+    return cleanReply(res.content, { truncated: res.finish !== "stop" }) || null;
   } catch (err) {
     console.warn("[Pausa] La IA del móvil no pudo responder:", err);
     if (/device.*lost/i.test(`${err?.name} ${err?.message}`)) {
