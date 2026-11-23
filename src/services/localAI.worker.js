@@ -19,7 +19,7 @@ self.onmessage = async ({ data }) => {
     } else if (op === "remove") {
       await host.remove(args.id);
     } else if (op === "load") {
-      await host.load(args.id, (progress) => reply({ progress }));
+      await host.load(args.id, (progress) => reply({ progress }), args.backend);
     } else if (op === "chat") {
       result = await host.chat(args.request, (delta) => reply({ delta }));
     } else if (op === "interrupt") {

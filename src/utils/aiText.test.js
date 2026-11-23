@@ -4,8 +4,10 @@ import {
   buildSummaryMessages,
   cleanReply,
   cleanSummary,
+  dropRepeats,
   hasSentences,
   LOCAL_SYSTEM_PROMPT,
+  saidSentences,
 } from "./aiText";
 
 describe("buildChatMessages", () => {
@@ -97,6 +99,33 @@ describe("cleanReply", () => {
       "Te entiendo. Es normal sentirse así."
     );
     expect(cleanReply("Sin punto final", { truncated: true })).toBe("Sin punto final");
+  });
+});
+
+describe("dropRepeats", () => {
+  const said = saidSentences([
+    { role: "ai", text: "Hola, Alex. ¿Qué tienes en mente hoy?" },
+    { role: "user", text: "Me ha llamado una amiga" },
+    { role: "ai", text: "¡Qué ilusión! ¿Cómo te ha hecho sentir esa llamada?" },
+  ]);
+
+  it("quita las frases que el acompañante ya dijo", () => {
+    expect(dropRepeats("¡Qué alegría! ¿Cómo te ha hecho sentir esa llamada?", said)).toBe("¡Qué alegría!");
+    expect(dropRepeats("¿Cómo te ha hecho sentir esa llamada?", said)).toBe("");
+  });
+
+  it("no cuenta lo que escribió la persona", () => {
+    expect(dropRepeats("Me ha llamado una amiga.", said)).toBe("Me ha llamado una amiga.");
+  });
+
+  it("mientras se escribe, no enseña una frase que va camino de repetirse", () => {
+    expect(dropRepeats("¡Qué alegría! ¿Cómo te ha", said, { partial: true })).toBe("¡Qué alegría!");
+    expect(dropRepeats("¡Qué alegría! ¿Cómo te fue", said, { partial: true })).toBe("¡Qué alegría! ¿Cómo te fue");
+    expect(dropRepeats("¡", said, { partial: true })).toBe("");
+  });
+
+  it("sin nada dicho, no toca el texto", () => {
+    expect(dropRepeats("Hola. Hola.", new Set())).toBe("Hola. Hola.");
   });
 });
 

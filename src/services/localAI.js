@@ -18,7 +18,9 @@ import {
   buildSummaryMessages,
   cleanReply,
   cleanSummary,
+  dropRepeats,
   hasSentences,
+  saidSentences,
 } from "../utils/aiText";
 
 export const LOCAL_MODELS = {
@@ -43,6 +45,8 @@ export const LOCAL_MODELS = {
 
 const SETTINGS_KEY = "pausa-ia-local";
 const PREPARING_KEY = "pausa-ia-local-preparando";
+// Dónde guarda el modelo este navegador ("opfs" si la Cache API no pudo).
+const STORAGE_KEY = "pausa-ia-local-almacen";
 const REPLY_TIMEOUT_MS = 90_000; // tope para una respuesta
 const PREPARE_WAIT_MS = 60_000; // lo que espera una respuesta a que el modelo se prepare
 const PROBE_TIMEOUT_MS = 20_000; // arrancar el worker (lee la librería)
@@ -200,7 +204,7 @@ function workerHost(w) {
     probe: () => call("probe"),
     cached: (ids) => call("cached", { ids }),
     remove: (id) => call("remove", { id }),
-    load: (id, onProgress) => call("load", { id }, { onProgress }),
+    load: (id, onProgress, backend) => call("load", { id, backend }, { onProgress }),
     chat: (request, onDelta) => call("chat", { request }, { onDelta }),
     interrupt: () => call("interrupt").catch(() => {}),
     // Cerrar el worker libera de golpe toda la memoria del modelo.
@@ -302,7 +306,8 @@ function load(key) {
   };
   loadedKey = null;
   loadingKey = key;
-  set({ status: "loading", phase: null, progress: 0, error: null });
+  const downloaded = !!state.cached[key];
+  set({ status: "loading", phase: downloaded ? "prepare" : "download", progress: 0, error: null });
 
   loadPromise = (async () => {
     const support = await checkSupport();
@@ -315,13 +320,27 @@ function load(key) {
     stopIfCancelled();
     const host = await getHost();
     stopIfCancelled();
+    const preferred = readStorage(STORAGE_KEY) || "cache";
     await host.load(modelId(key), (report) => {
+      // Aviso de cambio de almacén: solo se recuerda; la descarga sigue igual.
+      if (report.backend) return writeStorage(STORAGE_KEY, report.backend);
       if (!current()) return;
-      const phase = /^fetching/i.test(report.text || "") ? "download" : "prepare";
+      // "Start to fetch params" abre tanto una descarga como una carga desde
+      // lo ya descargado; "Fetching param cache" es descarga; el resto, preparar.
+      const text = report.text || "";
+      const phase = /^fetching/i.test(text)
+        ? "download"
+        : /^start to fetch/i.test(text)
+          ? downloaded
+            ? "prepare"
+            : "download"
+          : "prepare";
       // Marca de "preparando": si la app se cierra ahora, suele ser por memoria.
       if (phase === "prepare" && state.phase !== "prepare") writeStorage(PREPARING_KEY, key);
-      set({ phase, progress: Math.max(0, Math.min(1, report.progress || 0)) });
-    });
+      // Preparar llega al 90 %; el calentamiento (ver localAI.host.js) es el resto.
+      const progress = Math.max(0, Math.min(1, report.progress || 0));
+      set({ phase, progress: text === "warmup" ? 0.95 : phase === "prepare" ? progress * 0.9 : progress });
+    }, preferred);
     stopIfCancelled();
     writeStorage(PREPARING_KEY, null);
     loadedKey = key;
@@ -427,6 +446,11 @@ export async function localReply(history, onPartial) {
   const key = loadedKey;
   try {
     const host = await getHost();
+    // La respuesta no espera al resumen del mensaje anterior: se corta y se
+    // descarta (el chat pide otro, más completo, después de esta respuesta).
+    summaryTicket++;
+    if (summaryRunning) host.interrupt();
+    const said = saidSentences(history);
     let raw = "";
     let stopped = false;
     const res = await enqueue(() =>
@@ -435,10 +459,11 @@ export async function localReply(history, onPartial) {
           {
             messages: buildChatMessages(history),
             stream: true,
-            // Sin penalizar la frecuencia: en español castiga "que", "de",
-            // "la"… y el modelo acaba eligiendo palabras raras. Una
+            // Temperatura baja: con más, el modelo pequeño elige palabras
+            // raras y se inventa frases sin sentido. Sin penalizar la
+            // frecuencia: en español castiga "que", "de", "la"…; una
             // penalización suave de repetición basta.
-            temperature: 0.6,
+            temperature: 0.3,
             top_p: 0.9,
             repetition_penalty: 1.05,
             max_tokens: 160,
@@ -446,10 +471,11 @@ export async function localReply(history, onPartial) {
           },
           (delta) => {
             raw += delta;
-            const visible = cleanReply(raw, { partial: true });
+            const clean = cleanReply(raw, { partial: true });
+            const visible = dropRepeats(clean, said, { partial: true });
             if (visible) onPartial?.(visible);
-            // Con las frases que se muestran ya escritas, no sigue generando.
-            if (!stopped && hasSentences(visible, MAX_SENTENCES)) {
+            // Con las frases que caben ya escritas, no sigue generando.
+            if (!stopped && hasSentences(clean, MAX_SENTENCES)) {
               stopped = true;
               host.interrupt();
             }
@@ -459,7 +485,8 @@ export async function localReply(history, onPartial) {
         () => host.interrupt()
       )
     );
-    return cleanReply(res.content, { truncated: res.finish !== "stop" }) || null;
+    // Si todo era repetido, null: el chat contesta como siempre.
+    return dropRepeats(cleanReply(res.content, { truncated: res.finish !== "stop" }), said) || null;
   } catch (err) {
     console.warn("[Pausa] La IA del móvil no pudo responder:", err);
     if (/device.*lost/i.test(`${err?.name} ${err?.message}`)) {
@@ -471,6 +498,7 @@ export async function localReply(history, onPartial) {
 }
 
 let summaryTicket = 0;
+let summaryRunning = false;
 
 /**
  * Resumen del día generado en el móvil. null = no disponible (usar el de
@@ -487,12 +515,20 @@ export async function localSummary(history) {
     const host = await getHost();
     return await enqueue(async () => {
       if (ticket !== summaryTicket) return "";
-      const res = await withTimeout(
-        host.chat({ messages, temperature: 0.3, max_tokens: 60, ...extraFor(key) }),
-        REPLY_TIMEOUT_MS,
-        () => host.interrupt()
-      );
-      return cleanSummary(res.content) || null;
+      summaryRunning = true;
+      try {
+        const res = await withTimeout(
+          host.chat({ messages, temperature: 0.3, max_tokens: 60, ...extraFor(key) }),
+          REPLY_TIMEOUT_MS,
+          () => host.interrupt()
+        );
+        if (ticket !== summaryTicket) return ""; // lo cortó una respuesta
+        // Si no siguió el formato (a veces escribe en primera persona), el de siempre.
+        const summary = cleanSummary(res.content);
+        return /^hoy\b/i.test(summary) ? summary : null;
+      } finally {
+        summaryRunning = false;
+      }
     });
   } catch {
     return null;

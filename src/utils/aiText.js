@@ -1,22 +1,33 @@
 // Texto para la IA del móvil: qué se le pasa al modelo y cómo se limpia lo que
 // devuelve. Funciones puras (sin navegador), probadas en utils.test.js.
 
-// Instrucciones del acompañante para un modelo pequeño: cortas y directas.
-export const LOCAL_SYSTEM_PROMPT =
-  "Eres el acompañante de Pausa, un diario personal. Respondes siempre en " +
-  "español sencillo y natural, con calidez, como alguien que sabe escuchar. " +
-  "Contesta a lo último que ha escrito la persona. Si cuenta cómo se siente, " +
-  "reconoce lo que siente con tus palabras y, si encaja, ofrece una idea " +
-  "sencilla, como respirar despacio o dar un paso pequeño. Si escribe algo que " +
-  "no va de cómo se siente (una broma, una prueba, algo fuera de lugar), " +
-  "contesta con naturalidad en una frase, sin inventarle emociones. Escribe " +
-  "como mucho tres frases cortas, en texto plano, sin listas ni emojis. No " +
-  "saludes: la conversación ya ha empezado. No repitas frases que ya hayas " +
-  "dicho. No generalices sobre hombres, mujeres ni ningún grupo de personas, y " +
-  "no des por hecho el género de nadie. No haces diagnósticos ni recomiendas " +
-  "medicamentos, y nunca juzgas. Si la persona habla de hacerse daño, la animas " +
-  "con delicadeza a hablar con alguien de confianza y a llamar al 024 (España), " +
-  "o al 112 si hay peligro inmediato.";
+// Instrucciones del acompañante para un modelo pequeño: reglas cortas y unos
+// pocos ejemplos de tono. Probado con Qwen 3.5 2B: con ejemplos responde más
+// corto y a lo que se le cuenta; sin ellos se enrolla e inventa consejos. Los
+// ejemplos los imita casi palabra por palabra, así que no deben parecerse a
+// nada que la persona vaya a escribir a menudo.
+export const LOCAL_SYSTEM_PROMPT = [
+  "Eres el acompañante de Pausa, un diario personal. Hablas en español de España, sencillo y natural, como alguien cercano que sabe escuchar.",
+  "",
+  "Cómo respondes:",
+  "- Respondes solo a lo último que ha escrito la persona, en una o dos frases cortas.",
+  "- Si cuenta cómo se siente, dices con palabras sencillas lo que parece sentir y, si encaja, haces una pregunta abierta o propones algo pequeño y concreto.",
+  "- Si solo saluda, saludas en pocas palabras y le preguntas qué tal está.",
+  "- Si pregunta o escribe algo que no va de cómo se siente, contestas breve y con naturalidad, sin inventarle emociones.",
+  "- No halagas ni exageras, no inventas detalles que no ha contado y no repites lo que ya dijiste.",
+  "- Si la persona no ha dicho su género, no lo supones: evita palabras como cansado o cansada, tranquilo o tranquila.",
+  "- No generalizas sobre hombres, mujeres ni ningún grupo. No haces diagnósticos ni recomiendas medicamentos. Nunca juzgas.",
+  "- Si habla de hacerse daño, la animas con delicadeza a hablar con alguien de confianza y a llamar al 024, o al 112 si hay peligro inmediato.",
+  "- Texto plano, sin listas ni emojis.",
+  "",
+  "Ejemplos de tu tono:",
+  "Persona: Me han dado una buena noticia en el trabajo.",
+  "Tú: ¡Qué alegría! ¿Cómo lo has celebrado?",
+  "Persona: No dejo de darle vueltas a una discusión con mi hermano.",
+  "Tú: Cuesta soltar algo así cuando te importa la otra persona. ¿Qué es lo que más te ronda de lo que pasó?",
+  "Persona: buenas",
+  "Tú: ¡Hola! ¿Qué tal va tu día?",
+].join("\n");
 
 // Como mucho, frases por respuesta (los modelos pequeños se enrollan).
 export const MAX_SENTENCES = 3;
@@ -80,6 +91,55 @@ function sentenceEnd(text, n) {
 // ¿Tiene ya `n` frases completas? (para dejar de generar)
 export const hasSentences = (text, n = MAX_SENTENCES) => sentenceEnd(text, n) !== -1;
 
+// Frases completas de un texto y lo que queda sin terminar.
+function splitSentences(text) {
+  const re = /[.!?…]+["»”')]*(?=\s|$)/g;
+  const done = [];
+  let start = 0;
+  let match;
+  while ((match = re.exec(text))) {
+    const end = match.index + match[0].length;
+    const sentence = text.slice(start, end).trim();
+    if (sentence) done.push(sentence);
+    start = end;
+  }
+  return { done, rest: text.slice(start).trim() };
+}
+
+// Para comparar frases: sin mayúsculas, signos ni espacios de más.
+const normalize = (s) =>
+  s
+    .toLowerCase()
+    .replace(/[¡¿!?.…,;:"«»“”'()]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+// Frases que el acompañante ya ha dicho en la conversación.
+export function saidSentences(history) {
+  const said = new Set();
+  for (const m of history) {
+    if (m.role === "user") continue;
+    const { done, rest } = splitSentences(m.text || "");
+    for (const s of [...done, rest]) if (normalize(s)) said.add(normalize(s));
+  }
+  return said;
+}
+
+// Quita las frases que ya se dijeron (un modelo pequeño copia sus respuestas
+// anteriores). Mientras se escribe (`partial`), una frase a medias que va
+// camino de ser una repetida no se enseña: así nada aparece y luego se borra.
+export function dropRepeats(text, said, { partial = false } = {}) {
+  if (!said.size) return text;
+  const { done, rest } = splitSentences(text);
+  const kept = done.filter((s) => !said.has(normalize(s)));
+  let tail = rest;
+  if (tail) {
+    const n = normalize(tail);
+    if (partial ? !n || [...said].some((s) => s.startsWith(n)) : said.has(n)) tail = "";
+  }
+  return [...kept, tail].filter(Boolean).join(" ");
+}
+
 // Para el resumen solo cuenta lo que escribió la persona.
 export function buildSummaryMessages(history) {
   const budget = SUMMARY_TOKENS * CHARS_PER_TOKEN;
@@ -101,9 +161,12 @@ export function buildSummaryMessages(history) {
       content:
         "Esto es lo que la persona escribió hoy en su diario:\n\n" +
         lines.join("\n") +
-        "\n\nEscribe una sola frase breve (máximo 20 palabras), cálida y en " +
-        "segunda persona, con lo principal que contó o sintió hoy. Por ejemplo: " +
-        "Hoy hablaste del cansancio tras el examen y de lo bien que te sentó correr.",
+        // Empezar por "Hoy hablaste de" obliga al modelo pequeño a escribir en
+        // segunda persona y a contar, no a inventar cómo acabó el día.
+        "\n\nEscribe una sola frase breve (máximo 20 palabras) que empiece por " +
+        "«Hoy hablaste de», con lo principal que contó, sin añadir nada que no " +
+        "haya escrito. Por ejemplo: Hoy hablaste del cansancio tras el examen y " +
+        "de lo bien que te sentó correr.",
     },
   ];
 }
