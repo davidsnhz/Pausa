@@ -1,17 +1,19 @@
-// Perfil, estilo ajustes de iOS: modo oscuro, legales, contacto, descargar
-// mis datos, cerrar sesión y borrar cuenta (pide la contraseña antes).
+// Perfil, estilo ajustes de iOS: modo oscuro, IA en este móvil, legales,
+// contacto, descargar mis datos, cerrar sesión y borrar cuenta (pide la
+// contraseña antes).
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { signOut, updateProfile } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import {
-  ArrowLeft, ChevronRight, UserRound, Moon, Shield, FileText, Mail, Download, LogOut, Trash,
+  ArrowLeft, ChevronRight, UserRound, Moon, Sparkles, Shield, FileText, Mail, Download, LogOut, Trash,
 } from "lucide-react";
 
 import { useAuth, displayNameOf } from "../context/AuthContext";
 import { auth, db } from "../services/firebase";
 import { deleteAccount, exportUserData } from "../services/account";
 import { setTheme } from "../services/theme";
+import { useLocalAI } from "../services/localAI";
 import { useGoBack } from "../hooks/useGoBack";
 import { LEGAL } from "../utils/legal";
 import Modal from "../components/Modal";
@@ -92,6 +94,16 @@ export default function Profile() {
   const [exportFile, setExportFile] = useState(null);
   const [exportError, setExportError] = useState("");
   const [showExport, setShowExport] = useState(false);
+
+  const ai = useLocalAI();
+  const aiValue =
+    ai.status === "loading" && ai.phase === "download"
+      ? `${Math.floor(ai.progress * 100)} %`
+      : !ai.settings.enabled
+        ? "Desactivada"
+        : ai.status === "error" || ai.crashed === ai.settings.model
+          ? "No disponible"
+          : "Activada";
 
   const nombre = displayNameOf(user, profile) || "Tú";
   const inicial = nombre.charAt(0).toUpperCase();
@@ -228,6 +240,7 @@ export default function Profile() {
         <div className="mb-6 overflow-hidden rounded-2xl bg-neutral-100 dark:bg-neutral-900">
           <Row Icon={UserRound} label="Nombre" value={nombre} chevron onClick={openName} />
           <Row Icon={Moon} label="Modo Oscuro" toggle checked={dark} onToggle={toggleDark} />
+          <Row Icon={Sparkles} label="IA en este móvil" value={aiValue} chevron onClick={() => navigate("/ia")} />
         </div>
 
         <p className="mb-3 text-sm font-semibold text-neutral-400">Legal</p>

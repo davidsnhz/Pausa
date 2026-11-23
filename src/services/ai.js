@@ -1,10 +1,13 @@
 // Adaptador de IA para el chat. Función principal: getAIReply(history).
 //
-// - Si existe VITE_AI_PROXY_URL, se llama a ese endpoint propio (una Cloud
-//   Function de Firebase que a su vez habla con la API de Anthropic). La clave
-//   de la API está solo en el backend, nunca en el frontend.
-// - Si no existe, se usa el modo fallback: respuestas empáticas variadas en
+// - Un mensaje de crisis recibe siempre la respuesta fija con el 024 y el 112,
+//   la escriba quien la escriba: no se deja en manos de un modelo.
+// - Si la IA del móvil está activada (services/localAI.js), responde ella.
+// - Si existe VITE_AI_PROXY_URL, se llama a ese endpoint propio (la clave de
+//   la API está solo en el backend, nunca en el frontend).
+// - Si no, o si algo falla, el modo fallback: respuestas empáticas variadas en
 //   español, para que la app sea plenamente funcional sin backend.
+import { localReply, localSummary } from "./localAI";
 
 const PROXY_URL = import.meta.env.VITE_AI_PROXY_URL;
 
@@ -144,9 +147,11 @@ export function classify(text) {
   return neg > 0 ? "difficult" : "neutral";
 }
 
+const lastUserText = (history) => [...history].reverse().find((m) => m.role === "user")?.text || "";
+const pause = () => new Promise((r) => setTimeout(r, 700 + Math.random() * 600));
+
 function pickFallback(history) {
-  const lastUser = [...history].reverse().find((m) => m.role === "user");
-  const kind = classify(lastUser?.text || "");
+  const kind = classify(lastUserText(history));
   if (kind === "crisis") return CRISIS_REPLY;
   // Al azar, pero sin repetir frases ya dichas en esta conversación.
   const said = new Set(history.filter((m) => m.role === "ai").map((m) => m.text));
@@ -159,12 +164,22 @@ function pickFallback(history) {
 /**
  * Devuelve la respuesta de la IA para un historial de mensajes.
  * @param {{role: "user"|"ai", text: string}[]} history
+ * @param {{onPartial?: (text: string) => void}} [options] onPartial recibe la
+ *   respuesta según se va escribiendo (solo con la IA del móvil).
  * @returns {Promise<string>}
  */
-export async function getAIReply(history) {
+export async function getAIReply(history, { onPartial } = {}) {
+  if (classify(lastUserText(history)) === "crisis") {
+    await pause();
+    return CRISIS_REPLY;
+  }
+
+  const local = await localReply(history, onPartial);
+  if (local) return local;
+
   if (!PROXY_URL) {
     // Pequeña latencia simulada para que aparezca el indicador de escribiendo.
-    await new Promise((r) => setTimeout(r, 700 + Math.random() * 600));
+    await pause();
     return pickFallback(history);
   }
 
@@ -186,13 +201,17 @@ export async function getAIReply(history) {
 
 /**
  * Genera un resumen breve del día a partir del historial del chat.
- * Sin proxy, produce un resumen local sencillo (primer mensaje del usuario).
+ * Con la IA del móvil lo escribe ella; sin IA, un resumen sencillo (el primer
+ * mensaje del usuario). "" = no hay que guardar nada.
  * @param {{role: "user"|"ai", text: string}[]} history
  * @returns {Promise<string>}
  */
 export async function getChatSummary(history) {
   const firstUser = history.find((m) => m.role === "user");
   const base = firstUser?.text?.trim() || "";
+
+  const local = await localSummary(history);
+  if (local !== null) return local;
 
   if (!PROXY_URL) {
     if (!base) return "";

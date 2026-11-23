@@ -95,13 +95,21 @@ export default defineConfig({
     host: true,
     port: 5173,
   },
+  // El worker de la IA del móvil (src/services/localAI.worker.js) es un módulo.
+  worker: { format: "es" },
   build: {
+    // La librería de la IA del móvil pesa unos 6 MB (lleva el tokenizador en
+    // WebAssembly), pero solo se descarga si se activa la IA.
+    chunkSizeWarningLimit: 6500,
     rolldownOptions: {
       output: {
         // Separa las librerías grandes en trozos propios: se cachean aparte y
         // no se vuelven a descargar en cada despliegue si no cambian.
         codeSplitting: {
           groups: [
+            // La IA del móvil (varios MB) solo se descarga si se activa: si
+            // cayera en "vendor" se cargaría al abrir la app.
+            { name: "webllm", test: /node_modules[\\/]@mlc-ai[\\/]/, priority: 5 },
             { name: "firebase", test: /node_modules[\\/]@?firebase[\\/]/, priority: 4 },
             { name: "framer", test: /node_modules[\\/](framer-motion|motion-dom|motion-utils)[\\/]/, priority: 3 },
             { name: "react", test: /node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/, priority: 2 },

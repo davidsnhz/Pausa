@@ -2,6 +2,8 @@
 // de cada respuesta actualizo el resumen del día para el Dashboard (así no
 // depende de que se pulse "volver").
 // Con /chat/AAAA-MM-DD se abre la conversación de otro día, solo para leer.
+// Con la IA del móvil activada, la respuesta aparece según se escribe y bajo
+// el título se ve si la IA está lista.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   collection,
@@ -19,6 +21,7 @@ import { useParams } from "react-router";
 import { useAuth, displayNameOf } from "../context/AuthContext";
 import { db } from "../services/firebase";
 import { getAIReply, getChatSummary } from "../services/ai";
+import { useLocalAI, warmUp } from "../services/localAI";
 import { touchStreak } from "../services/streak";
 import { dateKey, longDate } from "../utils/date";
 import { hideKeyboard } from "../services/native";
@@ -43,6 +46,15 @@ export default function Chat() {
   const [messages, setMessages] = useState(null); // null hasta la primera lectura
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(false);
+  // Respuesta de la IA mientras se escribe (y ya terminada, hasta que llega
+  // guardada por onSnapshot: así no se ve dos veces ni desaparece un instante).
+  const [draft, setDraft] = useState("");
+
+  const ai = useLocalAI();
+  const aiStatus = readOnly ? null : localAIStatus(ai);
+  useEffect(() => {
+    if (!readOnly) warmUp();
+  }, [readOnly]);
 
   const scrollRef = useRef(null);
   const scrolledOnce = useRef(false);
@@ -73,6 +85,13 @@ export default function Chat() {
     scrolledOnce.current = true;
   }, [messages, typing]);
 
+  // Mientras se escribe la respuesta, la lista sigue al final sin animación
+  // (una animación por letra daría tirones).
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el && draft) el.scrollTop = el.scrollHeight;
+  }, [draft]);
+
   async function send() {
     const value = text.trim();
     if (!value || typing || !messagesCol || readOnly) return;
@@ -98,7 +117,8 @@ export default function Chat() {
       touchStreak(user.uid);
 
       // 2) Pedir respuesta a la IA.
-      const reply = await getAIReply(history);
+      const reply = await getAIReply(history, { onPartial: setDraft });
+      setDraft(reply);
       await addDoc(messagesCol, { role: "ai", text: reply, createdAt: serverTimestamp() });
 
       // 3) Actualizar el resumen del día en segundo plano (no hace esperar).
@@ -109,8 +129,13 @@ export default function Chat() {
       /* si falla la persistencia (Firebase sin configurar), no rompemos la UI */
     } finally {
       setTyping(false);
+      setDraft("");
     }
   }
+
+  // La respuesta ya llegó guardada: se deja de mostrar el borrador.
+  const last = messages?.[messages.length - 1];
+  const replySaved = !!draft && last?.role === "ai" && last.text === draft;
 
   function onKeyDown(e) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -128,9 +153,17 @@ export default function Chat() {
           <button onClick={goBack} aria-label="Volver">
             <ArrowLeft size={24} />
           </button>
-          <h2 className="flex-1 pr-6 text-center text-base font-bold tracking-[-0.5px]">
-            {readOnly ? longDate(day) : "Tu espacio seguro"}
-          </h2>
+          <div className="min-w-0 flex-1 pr-6 text-center">
+            <h2 className="text-base font-bold tracking-[-0.5px]">
+              {readOnly ? longDate(day) : "Tu espacio seguro"}
+            </h2>
+            {aiStatus && (
+              <p className="mt-0.5 flex items-center justify-center gap-1.5 text-xs font-medium text-neutral-400">
+                {aiStatus.ready && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-green-500" />}
+                <span className="truncate">{aiStatus.text}</span>
+              </p>
+            )}
+          </div>
         </header>
 
         {/* Lista de mensajes */}
@@ -152,7 +185,7 @@ export default function Chat() {
             )
           )}
 
-          {typing && <TypingIndicator />}
+          {typing && !replySaved && (draft ? <AiBubble text={draft} /> : <TypingIndicator />)}
         </div>
 
         {/* Barra de entrada (no en días anteriores: solo se leen) */}
@@ -179,6 +212,20 @@ export default function Chat() {
       </div>
     </Page>
   );
+}
+
+// Línea bajo el título con el estado de la IA del móvil (null si no está activada).
+function localAIStatus(ai) {
+  if (!ai.settings.enabled) return null;
+  const model = ai.settings.model;
+  if (ai.status === "ready") return { ready: true, text: "Con la IA de tu móvil" };
+  if (ai.status === "loading" && ai.phase === "download")
+    return { text: `Descargando la IA · ${Math.floor(ai.progress * 100)} %` };
+  if (ai.status === "loading") return { text: "Preparando la IA de tu móvil…" };
+  if (ai.status === "error" || ai.crashed === model || ai.support?.ok === false)
+    return { text: "IA del móvil no disponible ahora" };
+  if (ai.cached[model] === false) return { text: "IA del móvil sin descargar" };
+  return { text: "Preparando la IA de tu móvil…" };
 }
 
 // Burbuja de IA con mini-mascota "listening".

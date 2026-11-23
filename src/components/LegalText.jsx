@@ -22,6 +22,7 @@ export const LEGAL_DOCS = {
       ["Edad mínima", `Pausa es para personas de ${minAge} años o más.`],
       ["Seguridad", "Las comunicaciones van cifradas (HTTPS) y las reglas de la base de datos impiden que nadie más que tú acceda a tu diario. Aun así, ningún sistema es infalible."],
       ["En tu dispositivo", "Guardamos en tu navegador tu preferencia de tema y una copia de tus datos para que la app funcione sin conexión. No usamos cookies de publicidad ni herramientas de analítica."],
+      ["IA en este móvil", "Si la activas (Perfil → IA en este móvil), descargamos un modelo abierto de inteligencia artificial desde los servidores de Hugging Face y GitHub, que solo reciben la petición de descarga, como al abrir cualquier web. El modelo se guarda en tu dispositivo y genera allí las respuestas: tus mensajes no se envían a ningún servidor de IA. Puedes borrarlo desde esa misma pantalla."],
       ["Cambios", "Si cambiamos esta política, te avisaremos en la app y te pediremos aceptarla de nuevo."],
     ],
   },

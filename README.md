@@ -58,6 +58,8 @@ Son 8 `.mp3` en `public/sounds/`, con los nombres que pone en [`public/sounds/RE
 
 Sin configurar nada, el chat contesta con frases preparadas según el tono del mensaje. Para usar un modelo de verdad hay que poner `VITE_AI_PROXY_URL` apuntando a un backend propio (por ejemplo una Cloud Function). La clave de la API va en ese backend, nunca en el frontend.
 
+**IA en este móvil (en pruebas).** Desde Perfil → IA en este móvil se puede descargar un modelo abierto (Qwen 3.5 2B, unos 1 GB, o Llama 3.2 1B, unos 700 MB) que responde dentro del propio dispositivo con [WebLLM](https://github.com/mlc-ai/web-llm) y WebGPU: no hace falta servidor ni clave y los mensajes no salen del móvil. Necesita WebGPU (iPhone con iOS 26 o Android con Chrome reciente). El modelo corre en un worker (`src/services/localAI.worker.js`) y la librería solo se descarga si se activa. Los mensajes de crisis siguen recibiendo siempre la respuesta fija con el 024 y el 112, y si la IA falla responde el chat de siempre.
+
 ## Producción
 
 ```bash

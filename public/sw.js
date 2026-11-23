@@ -19,7 +19,11 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
       const keys = await caches.keys();
-      await Promise.all(keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k)));
+      // Solo las cachés propias: las de la IA del móvil ("webllm/…") guardan
+      // el modelo descargado y no deben borrarse al actualizar la app.
+      await Promise.all(
+        keys.filter((k) => k.startsWith("pausa-") && k !== CACHE_VERSION).map((k) => caches.delete(k))
+      );
       await self.clients.claim();
     })()
   );

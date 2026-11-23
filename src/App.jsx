@@ -25,12 +25,14 @@ const LAZY_PAGES = {
   Stats: () => import("./pages/Stats"),
   Profile: () => import("./pages/Profile"),
   Legal: () => import("./pages/Legal"),
+  LocalAI: () => import("./pages/LocalAI"),
 };
 const Chat = lazy(LAZY_PAGES.Chat);
 const Relax = lazy(LAZY_PAGES.Relax);
 const Stats = lazy(LAZY_PAGES.Stats);
 const Profile = lazy(LAZY_PAGES.Profile);
 const Legal = lazy(LAZY_PAGES.Legal);
+const LocalAI = lazy(LAZY_PAGES.LocalAI);
 
 // Rutas donde SÍ aparece el navbar inferior flotante.
 const NAV_ROUTES = ["/", "/relax", "/stats"];
@@ -151,6 +153,14 @@ export default function App() {
             element={
               <Protected user={user} loading={loading}>
                 <Profile />
+              </Protected>
+            }
+          />
+          <Route
+            path="/ia"
+            element={
+              <Protected user={user} loading={loading}>
+                <LocalAI />
               </Protected>
             }
           />
